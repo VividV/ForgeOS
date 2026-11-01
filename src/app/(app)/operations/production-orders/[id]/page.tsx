@@ -39,7 +39,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     supabase.from("production_logs").select("*, profiles:created_by(full_name), production_operations(name)").eq("production_order_id", id).order("occurred_at", { ascending: false }).limit(60),
     supabase.from("production_outputs").select("*").eq("production_order_id", id),
     supabase.from("inventory_balances").select("stock_item_id, available").eq("warehouse_id", o.material_warehouse_id),
-    lookups(ctx.org.id, ["members", "workCentres"]),
+    lookups(ctx.org.id, ctx.canAny("workforce.read", "costing.manage") ? ["members", "workCentres", "employees"] : ["members", "workCentres"]),
   ]);
   const qRead = ctx.can("quality.read");
   const costs = ctx.can("costing.read");
@@ -94,6 +94,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     overhead_entries: { id: string; category: string; description: string; amount: number; allocated: boolean }[];
   };
   const cs = costData as CostSummary | null;
+  let soLink: { id: string; number: string; customer: string } | null = null;
+  if (o.sales_order_item_id && ctx.can("sales_orders.read")) {
+    const { data: si } = await supabase.from("sales_order_items").select("sales_orders(id, number, customers(name))").eq("id", o.sales_order_item_id).maybeSingle();
+    const x = si?.sales_orders as unknown as { id: string; number: string; customers: { name: string } } | undefined;
+    if (x) soLink = { id: x.id, number: x.number, customer: x.customers.name };
+  }
   const hasShortage = materials.some((m) => Number(m.quantity_required) - Number(m.quantity_reserved) - Number(m.quantity_issued) > 0.0001);
   const canCostEdit = ctx.can("costing.manage") && isOpen && !["draft", "awaiting_approval"].includes(o.status);
 
@@ -332,7 +338,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <CardHeader
                 title="Costing"
                 description={cs.final ? "Final cost, frozen when the order was completed." : "Estimate from the BOM, routing and default rates, against costs recorded so far."}
-                action={canCostEdit && <CostEntryButtons orderId={o.id} operations={opOpts} workCentres={opts.workCentres} members={opts.members} labourRate={cs.labour_rate} />}
+                action={canCostEdit && <CostEntryButtons orderId={o.id} operations={opOpts} workCentres={opts.workCentres} members={opts.members} employees={opts.employees ?? []} labourRate={cs.labour_rate} />}
               />
               <Table>
                 <THead>
@@ -479,7 +485,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   { label: "Product", value: <Link href={`/commerce/products/${product.id}`} className="text-accent-ink hover:underline">{product.name} ({product.code})</Link> },
                   { label: "BOM", value: o.bom_id ? <Link href={`/commerce/boms/${o.bom_id}`} className="text-accent-ink hover:underline">Version {o.bom_version}</Link> : "—" },
                   { label: "Manager", value: (o.manager as unknown as { full_name: string } | null)?.full_name },
-                  { label: "Source", value: `${o.source.replace("_", " ")}${o.source_reference ? ` · ${o.source_reference}` : ""}` },
+                  {
+                    label: "Source",
+                    value: soLink ? (
+                      <Link href={`/commerce/customer-orders/${soLink.id}`} className="text-accent-ink hover:underline">
+                        Customer order {soLink.number} · {soLink.customer}
+                      </Link>
+                    ) : (
+                      `${o.source.replace("_", " ")}${o.source_reference ? ` · ${o.source_reference}` : ""}`
+                    ),
+                  },
                   { label: "Finished goods to", value: (o.output_wh as unknown as { name: string }).name },
                   { label: "Started", value: formatDateTime(o.actual_start_at, df, tz) },
                   { label: "Finished", value: formatDateTime(o.actual_end_at, df, tz) },

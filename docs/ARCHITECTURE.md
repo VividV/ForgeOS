@@ -65,6 +65,14 @@ Requisitions (`purchase_requisitions`) → approval → purchase orders (`purcha
 
 Rates live in `cost_rates` (one default labour rate; overheads applied automatically by basis). Labour and machine time (`labour_cost_entries`) and direct overheads (`overhead_cost_entries`) are recorded against open orders. `production_cost_summary` returns estimate vs actual; completion freezes the actual in `production_cost_snapshots`.
 
+## Customer orders
+
+`sales_orders` → `sales_order_items`. Confirming calls `app.so_allocate`, which holds free finished goods in `sales_allocations` and raises `inventory_balances.reserved` (the same mechanism as material reservations, so other orders and production can't take that stock). `sales_order_make` creates a production order linked through `production_orders.sales_order_item_id` (clients can't change that link); a trigger allocates its output to the order when it completes. `dispatch_post` consumes the line's allocation first, then free stock, and posts a `sales_dispatch` movement at average cost; `dispatches` and `dispatch_items` are permanent except for the one-time delivery confirmation. Goods-receipt and dispatch movements can't be reversed in the ledger (a trigger blocks it) because that would desynchronise the purchase or customer order. Payments are append-only with void-with-reason; `amount_paid` is recalculated from them.
+
+## Workforce
+
+`employees` don't need a login (optional link to a profile). Pay lives in `employee_pay`, readable only with `workforce.manage` or `costing.read`. `attendance_record` upserts one row per employee per day, computing hours from clock times (or the shift length) minus the unpaid break, and overtime beyond the shift; overnight shifts are handled.
+
 ## Alerts
 
 Critical conditions are detected by deterministic SQL rules (`operational_alerts`, low-stock trigger, `run_scheduled_checks`), never by AI. When the AI Copilot arrives it will explain these alerts, not be responsible for detecting them.

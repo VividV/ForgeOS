@@ -469,6 +469,117 @@ test("7. procurement: requisition → approval → purchase order → partial de
   await expect(page.locator("tbody tr")).toHaveCount(2);
 });
 
+test("P1 customer orders: confirm, hold stock, plan production for the shortfall, dispatch, deliver, take payment", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto("/commerce/customers");
+  await page.getByRole("button", { name: "Add customer" }).click();
+  let d = page.getByRole("dialog");
+  await d.getByLabel(/^Customer name/).fill("Eko Boutique");
+  await d.getByLabel(/^Code/).fill("EKO");
+  await d.getByLabel(/^Billing address/).fill("12 Admiralty Way, Lekki, Lagos");
+  await d.getByLabel(/^Payment terms/).fill("50% deposit, balance on delivery");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Customer added");
+
+  await page.goto("/commerce/customer-orders/new");
+  await page.getByLabel(/^Customer\*?$/).selectOption({ label: "Eko Boutique (EKO)" });
+  await page.getByLabel("Product").first().selectOption({ label: "Men's Cotton Shirt (SHIRT-M)" });
+  await expect(page.getByLabel("Unit price").first()).toHaveValue("15000"); // from the product's selling price
+  await page.getByLabel("Quantity").first().fill("120");
+  await page.getByLabel("Tax percent").first().fill("7.5");
+  await expect(page.getByText(/93 pcs free in this warehouse · the rest will need production/)).toBeVisible();
+  await page.getByLabel("Delivery charge").fill("3000");
+  // 120 × ₦15,000 = ₦1,800,000 + 7.5% VAT ₦135,000 + ₦3,000 delivery
+  await expect(page.getByText("₦1,938,000.00")).toBeVisible();
+  await expect(page.getByLabel("Payment terms")).toHaveValue("50% deposit, balance on delivery");
+  await page.getByRole("button", { name: "Create order" }).click();
+  await page.waitForURL(/\/commerce\/customer-orders\/[0-9a-f-]{36}$/);
+  const soUrl = page.url();
+
+  await page.getByRole("button", { name: "Confirm order" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm order" }).click();
+  await toast(page, "Order confirmed");
+  const line = page.getByRole("row", { name: /Men's Cotton Shirt/ });
+  await expect(line.getByRole("cell").nth(2)).toHaveText("93"); // ready: all 93 shirts in stock are held for this order
+  await expect(line.getByRole("cell").nth(5)).toHaveText("27"); // short
+
+  await line.getByRole("button", { name: "Plan production" }).click();
+  d = page.getByRole("dialog");
+  await expect(d.getByLabel(/^Quantity to produce/)).toHaveValue("27");
+  await d.getByRole("button", { name: "Create production order" }).click();
+  await toast(page, "Production order created");
+  await expect(line.getByRole("link", { name: /PRD-/ })).toBeVisible();
+  await expect(line.getByRole("cell").nth(5)).toHaveText("0");
+
+  await page.getByRole("link", { name: "Dispatch goods" }).click();
+  await expect(page.getByLabel("Dispatch Men's Cotton Shirt (SHIRT-M)")).toHaveValue("93");
+  await page.getByLabel("Carrier / logistics company").fill("GIG Logistics");
+  await page.getByRole("button", { name: "Dispatch", exact: true }).click();
+  await page.waitForURL(/\/commerce\/dispatches\/[0-9a-f-]{36}$/);
+  await page.getByRole("button", { name: "Confirm delivery" }).click();
+  d = page.getByRole("dialog");
+  await d.getByLabel(/^Received by/).fill("Mrs Funke Eko");
+  await d.getByRole("button", { name: "Confirm delivery" }).click();
+  await toast(page, "Delivery confirmed");
+  await expect(page.getByText("Mrs Funke Eko")).toBeVisible();
+
+  await page.goto(soUrl);
+  await expect(page.getByText("Partly dispatched").first()).toBeVisible();
+  await page.getByRole("button", { name: "Record payment" }).click();
+  d = page.getByRole("dialog");
+  await d.getByLabel(/^Amount/).fill("1000000");
+  await d.getByLabel(/^Reference/).fill("TRF-88231");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Payment recorded");
+  await expect(page.getByText("Part paid").first()).toBeVisible();
+  await expect(page.getByText("₦938,000.00 due")).toBeVisible();
+
+  // finished goods left the warehouse
+  await page.goto("/inventory/movements?type=sales_dispatch");
+  await expect(page.getByRole("row", { name: /Dispatched to customer/ })).toContainText("-93");
+  await page.goto("/inventory/finished-goods");
+  await expect(page.getByRole("row", { name: /Men's Cotton Shirt/ }).filter({ hasText: "93" })).toHaveCount(0);
+  await page.goto("/alerts");
+  await expect(page.getByText(/needs production/)).toHaveCount(0); // the shortfall is planned
+});
+
+test("P1 workforce: departments, shifts, an employee without a login, attendance and overtime", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto("/workforce/setup");
+  await page.getByRole("button", { name: "Add department" }).click();
+  await page.getByRole("dialog").getByLabel(/^Name/).fill("Sewing");
+  await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
+  await toast(page, "Department saved");
+  await page.getByRole("button", { name: "Add shift" }).click();
+  await page.getByRole("dialog").getByLabel(/^Name/).fill("Day");
+  await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
+  await toast(page, "Shift saved");
+  await expect(page.getByRole("row", { name: /Day/ })).toContainText("08:00–17:00");
+
+  await page.goto("/workforce/employees");
+  await page.getByRole("button", { name: "Add employee" }).click();
+  const d = page.getByRole("dialog");
+  await d.getByLabel(/^Full name/).fill("Bisi Adewale");
+  await d.getByLabel(/^Staff number/).fill("EMP-001");
+  await d.getByLabel(/^Job title/).fill("Machinist");
+  await d.getByLabel(/^Department/).selectOption({ label: "Sewing" });
+  await d.getByLabel(/^Usual shift/).selectOption({ label: "Day (08:00–17:00)" });
+  await d.getByLabel(/^Hourly rate/).fill("800");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Employee added");
+
+  await page.goto("/workforce/attendance");
+  await page.getByLabel("Status for Bisi Adewale").selectOption("present");
+  await page.getByLabel("Clock in for Bisi Adewale").fill("08:00");
+  await page.getByLabel("Clock out for Bisi Adewale").fill("19:00");
+  await page.getByRole("button", { name: "Save attendance" }).click();
+  await toast(page, "Attendance saved for 1 employee");
+  // 11 h on site − 1 h unpaid break = 10 h; the shift is 8 h, so 2 h overtime
+  const row = page.getByRole("row", { name: /Bisi Adewale/ }).last();
+  await expect(row.getByRole("cell").nth(6)).toHaveText("10");
+  await expect(row.getByRole("cell").nth(7)).toHaveText("2");
+});
+
 test("10. security: another organisation can't reach this organisation's records", async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();

@@ -11,6 +11,7 @@ const KIND: Record<string, string> = {
   overdue: "Overdue order", materials_pending: "Waiting for materials", over_consumption: "Over-consumption", idle_work_centre: "Idle work centre",
   rejection_rising: "Quality", low_stock: "Low stock", out_of_stock: "Out of stock",
   po_overdue: "Late delivery", po_pending_approval: "PO approval", corrective_action_overdue: "Corrective action",
+  so_overdue: "Late customer order", so_needs_production: "Needs production", so_ready: "Ready to dispatch",
 };
 
 export default async function AlertsPage() {
@@ -20,7 +21,7 @@ export default async function AlertsPage() {
   const alerts = ((data ?? []) as { kind: string; severity: string; title: string; detail: string | null; link: string }[]).sort((a, b) => Number(b.severity === "critical") - Number(a.severity === "critical"));
   return (
     <>
-      <PageHeader title="Alerts" description="Detected by fixed rules on live records (not AI): overdue orders, shortages, over-consumption against the BOM, idle work centres, rising rejection, stock below reorder level, late supplier deliveries, purchase orders awaiting approval and overdue corrective actions." />
+      <PageHeader title="Alerts" description="Detected by fixed rules on live records (not AI): overdue orders, shortages, over-consumption against the BOM, idle work centres, rising rejection, stock below reorder level, late supplier deliveries, purchase orders awaiting approval overdue corrective actions, late customer orders, customer orders that need production and orders ready to dispatch." />
       <Card>
         {alerts.length === 0 ? (
           <EmptyState icon={<ShieldCheck />} title="All clear" description="No rule is currently triggered." />

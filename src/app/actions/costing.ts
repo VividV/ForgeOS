@@ -15,6 +15,7 @@ const entrySchema = z.discriminatedUnion("entry_type", [
     hours: z.preprocess((v) => Number(v), z.number().positive("Enter hours worked")),
     rate: optNum,
     worker_id: optUuid,
+    employee_id: optUuid,
     worker_name: optText(120),
     operation_id: optUuid,
     entry_date: optDate,

@@ -50,15 +50,25 @@ Called through `supabase.rpc(name, args)` with the user's JWT. Each checks permi
 | `quality_check_record(p_org, p jsonb)` | `quality.create` (+`quality.approve` for conditional) | Inspection with checklist results, defects and corrective actions |
 | `corrective_action_update(action, status, resolution?)` | assignee or `quality.approve` | Done needs a resolution |
 | `defect_summary(p_org, from, to)` | `quality.read` | Defects by category and severity |
-| `cost_entry_add(order, p jsonb)`, `cost_entry_remove(entry, kind)` | `costing.manage` | Labour / machine / overhead entries on open orders |
+| `cost_entry_add(order, p jsonb)`, `cost_entry_remove(entry, kind)` | `costing.manage` | Labour / machine / overhead entries on open orders; labour uses the employee's rate, then the default |
 | `production_cost_summary(order)` | `costing.read` | Estimate vs actual by cost type, entries, margin inputs |
+| `sales_order_save(p_org, so?, p jsonb)` | `sales_orders.create` | Create/edit a draft customer order (products only); recalculates totals |
+| `sales_order_transition(so, confirm\|cancel\|close, note?)` | create / manage | Confirm allocates finished goods; cancel (needs a reason) and close release them |
+| `sales_order_allocate(so)` | create / manage / dispatch | Re-check stock and hold what's free |
+| `sales_order_lines(so)` | `sales_orders.read` | Per line: allocated, in production, dispatched, available, shortfall, linked production orders |
+| `sales_order_make(line, p jsonb)` | `production_orders.create` | Production order for a line's shortfall, linked to it; completion auto-allocates the output |
+| `dispatch_post(so, p jsonb, idem?)` | `sales_orders.dispatch` | Ships allocated stock first, then free stock; posts `sales_dispatch` at average cost |
+| `dispatch_confirm_delivery(dispatch, received_by, notes?)` | `sales_orders.dispatch` | Once only; order becomes delivered when every dispatch is |
+| `payment_record(so, p jsonb)`, `payment_void(payment, reason)` | create / manage | Payments can't exceed the balance; voids keep the record |
+| `attendance_record(p_org, p jsonb)` | `attendance.record` | Daily register (upsert per employee and day); hours from times or shift, overtime beyond the shift |
+| `attendance_summary(p_org, from, to)` | `workforce.read` / `attendance.record` | Per-employee totals |
 | `product_cost_estimate(product, save)` | `costing.read` (+`costing.manage` to save) | Unit cost from BOM, routing and rates |
 
-Views (RLS via `security_invoker`): `stock_item_details`, `stock_levels`, `production_material_reconciliation`, `goods_receipt_summary`, `production_inspection_totals`.
+Views (RLS via `security_invoker`): `stock_item_details`, `stock_levels`, `production_material_reconciliation`, `goods_receipt_summary`, `production_inspection_totals`, `customer_balances`.
 
 ## 2. Server actions (`src/app/actions/*`)
 
-Thin wrappers used by the UI: they validate input with Zod, call the functions above with the user's session and return `{ ok, data?, message? } | { ok: false, error, fieldErrors? }`. Files: `session`, `onboarding`, `team`, `catalog`, `inventory`, `production`, `imports`, `settings`, `notifications`, `procurement`, `quality`, `costing`.
+Thin wrappers used by the UI: they validate input with Zod, call the functions above with the user's session and return `{ ok, data?, message? } | { ok: false, error, fieldErrors? }`. Files: `session`, `onboarding`, `team`, `catalog`, `inventory`, `production`, `imports`, `settings`, `notifications`, `procurement`, `quality`, `costing`, `sales`, `workforce`.
 
 ## 3. HTTP routes
 

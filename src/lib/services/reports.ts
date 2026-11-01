@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type ReportKey = "production" | "efficiency" | "consumption" | "valuation" | "movements" | "wastage" | "procurement" | "suppliers" | "quality" | "costing";
+export type ReportKey = "production" | "efficiency" | "consumption" | "valuation" | "movements" | "wastage" | "procurement" | "suppliers" | "quality" | "costing" | "sales" | "attendance";
 
 export const REPORTS: { key: ReportKey; title: string; description: string; perm: string[]; costs?: boolean }[] = [
   { key: "production", title: "Production report", description: "Orders completed in the period: planned vs actual output, rejects and material cost.", perm: ["production_orders.read"] },
@@ -13,6 +13,8 @@ export const REPORTS: { key: ReportKey; title: string; description: string; perm
   { key: "procurement", title: "Purchase orders", description: "Purchase orders raised in the period with value, received quantity and delivery status.", perm: ["procurement.read"] },
   { key: "suppliers", title: "Supplier performance", description: "Per supplier: orders, value, on-time delivery and rejected goods for receipts in the period.", perm: ["procurement.read"] },
   { key: "quality", title: "Quality and defects", description: "Inspections in the period with pass rates, and defects by category and severity.", perm: ["quality.read"] },
+  { key: "sales", title: "Customer orders", description: "Orders taken in the period with value, dispatched quantity, payments and balance due.", perm: ["sales_orders.read"] },
+  { key: "attendance", title: "Attendance summary", description: "Days present, late, absent and on leave, hours and overtime per employee for the period.", perm: ["workforce.read"] },
   { key: "costing", title: "Production cost (estimate vs actual)", description: "Full cost of orders completed in the period: material, labour, machine and overhead, against the estimate.", perm: ["costing.read"], costs: true },
 ];
 
@@ -319,6 +321,65 @@ export async function buildReport(
       ]),
       rows,
       totals: { accepted: sum("accepted"), material: sum("material"), labour: sum("labour"), machine: sum("machine"), overhead: sum("overhead"), total: sum("total"), estimated_total: sum("estimated_total"), variance: sum("variance") },
+    };
+  }
+
+  if (key === "sales") {
+    const { data, error } = await sb
+      .from("sales_orders")
+      .select("number, status, order_date, requested_date, total, amount_paid, customers(name), sales_order_items(quantity, quantity_dispatched)")
+      .eq("organization_id", org)
+      .neq("status", "draft")
+      .gte("order_date", opts.from)
+      .lte("order_date", opts.to)
+      .order("order_date")
+      .limit(5000);
+    if (error) throw error;
+    const rows = (data ?? []).map((o) => {
+      const items = (o.sales_order_items as { quantity: number; quantity_dispatched: number }[]) ?? [];
+      const q = items.reduce((a, i) => a + Number(i.quantity), 0);
+      const d = items.reduce((a, i) => a + Number(i.quantity_dispatched), 0);
+      const cancelled = o.status === "cancelled";
+      return {
+        number: o.number,
+        customer: (o.customers as unknown as { name: string }).name,
+        ordered_on: o.order_date,
+        wanted_by: o.requested_date,
+        status: String(o.status).replace(/_/g, " "),
+        units: q,
+        dispatched_pct: q ? (d / q) * 100 : null,
+        total: cancelled ? 0 : Number(o.total),
+        paid: Number(o.amount_paid),
+        balance: cancelled ? 0 : Number(o.total) - Number(o.amount_paid),
+      };
+    });
+    const sum = (k: "units" | "total" | "paid" | "balance") => rows.reduce((a, r) => a + r[k], 0);
+    return {
+      columns: [
+        { key: "number", label: "Order" }, { key: "customer", label: "Customer" }, { key: "ordered_on", label: "Ordered", kind: "date" }, { key: "wanted_by", label: "Wanted by", kind: "date" },
+        { key: "status", label: "Status" }, { key: "units", label: "Units", kind: "qty" }, { key: "dispatched_pct", label: "Dispatched", kind: "pct" },
+        { key: "total", label: "Total", kind: "money" }, { key: "paid", label: "Paid", kind: "money" }, { key: "balance", label: "Balance due", kind: "money" },
+      ],
+      rows,
+      totals: { units: sum("units"), total: sum("total"), paid: sum("paid"), balance: sum("balance") },
+    };
+  }
+
+  if (key === "attendance") {
+    const { data, error } = await sb.rpc("attendance_summary", { p_org: org, p_from: opts.from, p_to: opts.to });
+    if (error) throw error;
+    const rows = ((data ?? []) as Record<string, string | number | null>[]).map((r) => ({
+      code: r.code, employee: r.full_name, department: r.department ?? "", present: Number(r.present), late: Number(r.late), half_days: Number(r.half_days),
+      absent: Number(r.absent), leave: Number(r.leave), hours: Number(r.hours), overtime: Number(r.overtime),
+    }));
+    return {
+      columns: [
+        { key: "code", label: "Staff no." }, { key: "employee", label: "Employee" }, { key: "department", label: "Department" }, { key: "present", label: "Present", kind: "qty" },
+        { key: "late", label: "Late", kind: "qty" }, { key: "half_days", label: "Half days", kind: "qty" }, { key: "absent", label: "Absent", kind: "qty" },
+        { key: "leave", label: "Leave", kind: "qty" }, { key: "hours", label: "Hours", kind: "qty" }, { key: "overtime", label: "Overtime", kind: "qty" },
+      ],
+      rows,
+      totals: { hours: rows.reduce((a, r) => a + r.hours, 0), overtime: rows.reduce((a, r) => a + r.overtime, 0) },
     };
   }
 

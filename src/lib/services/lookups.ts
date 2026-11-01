@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 export type Option = { value: string; label: string };
 
 /** Reference data for selects. All queries go through RLS with the user's session. */
-export async function lookups(orgId: string, which: ("uoms" | "factories" | "warehouses" | "suppliers" | "stages" | "workCentres" | "members" | "roles")[]) {
+export async function lookups(orgId: string, which: ("uoms" | "factories" | "warehouses" | "suppliers" | "stages" | "workCentres" | "members" | "roles" | "customers" | "departments" | "shifts" | "employees")[]) {
   const { supabase } = await getSession();
   const out: Partial<Record<(typeof which)[number], Option[]>> = {};
   await Promise.all(
@@ -35,6 +35,18 @@ export async function lookups(orgId: string, which: ("uoms" | "factories" | "war
             return { value: m.user_id as string, label: p?.full_name || p?.email || "Member" };
           })
           .sort((a, b) => a.label.localeCompare(b.label));
+      } else if (w === "customers") {
+        const { data } = await supabase.from("customers").select("id, name, code").eq("organization_id", orgId).is("deleted_at", null).eq("is_active", true).order("name");
+        out.customers = (data ?? []).map((f) => ({ value: f.id, label: `${f.name} (${f.code})` }));
+      } else if (w === "departments") {
+        const { data } = await supabase.from("departments").select("id, name").eq("organization_id", orgId).eq("is_active", true).order("name");
+        out.departments = (data ?? []).map((f) => ({ value: f.id, label: f.name }));
+      } else if (w === "shifts") {
+        const { data } = await supabase.from("shifts").select("id, name, start_time, end_time").eq("organization_id", orgId).eq("is_active", true).order("start_time");
+        out.shifts = (data ?? []).map((f) => ({ value: f.id, label: `${f.name} (${String(f.start_time).slice(0, 5)}–${String(f.end_time).slice(0, 5)})` }));
+      } else if (w === "employees") {
+        const { data } = await supabase.from("employees").select("id, full_name, code").eq("organization_id", orgId).neq("status", "left").order("full_name");
+        out.employees = (data ?? []).map((f) => ({ value: f.id, label: `${f.full_name} (${f.code})` }));
       } else if (w === "roles") {
         const { data } = await supabase.from("roles").select("id, name, is_owner").eq("organization_id", orgId).order("name");
         out.roles = (data ?? []).map((r) => ({ value: r.id, label: r.name }));

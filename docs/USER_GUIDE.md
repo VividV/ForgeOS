@@ -38,8 +38,34 @@ Open ForgeOS on your phone (add it to your home screen) → **My job cards** →
 ## 6. Keep stock accurate
 
 - **Transfer** between stores, **Adjust** after a stock count (enter the counted quantity; ForgeOS calculates the difference), write off damaged or expired stock. Every adjustment needs a reason and is recorded in the audit log.
-- Mistakes are fixed with **Reverse** on the movement, which leaves a clear trail.
+- Mistakes are fixed with **Reverse** on the movement, which leaves a clear trail. Goods received and goods dispatched are corrected from their purchase or customer order (or with an adjustment), not reversed.
 
-## 7. See how the factory is doing
+## 7. Buy materials
+
+1. **Purchase requisitions**: anyone allowed can request materials (from **Reorder alerts** or a production order that's short). An approver approves or rejects with a reason.
+2. **Purchase orders**: create one from an approved requisition or from scratch, with discounts, VAT and shipping. Submit it for approval (small orders can auto-approve under the threshold in Settings), print it, and mark it sent.
+3. **Receive goods** when the delivery arrives: count what came, reject anything damaged with a reason. Only accepted goods go into stock, valued at the price after discount (VAT excluded). Partial deliveries are fine; the order stays open for the rest.
+
+## 8. Check quality and costs
+
+- Build **checklists** under Quality → Checklists, then **Record inspection** on a production order or a delivery. Log defects and corrective actions with an owner and a due date.
+- A **final inspection** limits completion: you can't stock more units than passed. Settings can make it mandatory.
+- Under **Product costing**, set a labour rate per hour and overheads. On each production order, record labour hours, machine time and other costs (packaging, transport). Finished goods are valued at the full cost per accepted unit, and the order shows estimate vs actual.
+
+## 9. Sell and deliver
+
+1. Add **customers** (delivery address, payment terms, optional credit limit).
+2. Create a **customer order**. When you **confirm** it, finished goods in stock are held for that customer.
+3. Anything short shows in the **Short** column. **Plan production** creates a linked production order; when it completes, the goods are held for this customer automatically.
+4. **Dispatch goods** (print the delivery note), then **Confirm delivery** with the name of the person who received them.
+5. **Record payments** (deposits and balances) as they come in. Print a **pro-forma invoice** from the order.
+
+## 10. Manage your people
+
+- Add **employees** under Workforce, even if they never sign in. Set departments, their usual shift and (for managers) an hourly rate.
+- Take **attendance** each day: mark everyone present in one click, then adjust. Enter in and out times to capture actual hours; time beyond the shift counts as overtime.
+- When recording labour on a production order, pick the employee and their own hourly rate is used.
+
+## 11. See how the factory is doing
 
 **Mission Control** shows active and late orders, output, rejection rate, stock value and alerts. **Daily production** shows what happened on any day. **Operational reports** can be exported to CSV or printed to PDF.

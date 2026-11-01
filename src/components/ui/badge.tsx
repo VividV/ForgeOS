@@ -83,3 +83,37 @@ const QC: Record<string, Tone> = { pass: "success", fail: "danger", conditional:
 export function QcResultBadge({ result }: { result: string }) {
   return <Badge tone={QC[result] ?? "neutral"}>{result === "conditional" ? "Conditional" : result === "pass" ? "Pass" : "Fail"}</Badge>;
 }
+
+const SO: Record<string, { label: string; tone: Tone }> = {
+  draft: { label: "Draft", tone: "neutral" },
+  confirmed: { label: "Confirmed", tone: "accent" },
+  partially_dispatched: { label: "Partly dispatched", tone: "warning" },
+  dispatched: { label: "Dispatched", tone: "info" },
+  delivered: { label: "Delivered", tone: "success" },
+  closed: { label: "Closed", tone: "neutral" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+};
+export function SalesStatusBadge({ status }: { status: string }) {
+  const s = SO[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge tone={s.tone} dot>{s.label}</Badge>;
+}
+
+export function PaymentBadge({ total, paid, status }: { total: number; paid: number; status?: string }) {
+  if (status === "cancelled" || status === "draft") return null;
+  if (paid <= 0) return <Badge tone="danger">Unpaid</Badge>;
+  if (paid + 0.005 < total) return <Badge tone="warning">Part paid</Badge>;
+  return <Badge tone="success">Paid</Badge>;
+}
+
+const ATT: Record<string, { label: string; tone: Tone }> = {
+  present: { label: "Present", tone: "success" },
+  late: { label: "Late", tone: "warning" },
+  half_day: { label: "Half day", tone: "info" },
+  absent: { label: "Absent", tone: "danger" },
+  leave: { label: "Leave", tone: "neutral" },
+  off: { label: "Off", tone: "neutral" },
+};
+export function AttendanceBadge({ status }: { status: string }) {
+  const s = ATT[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge tone={s.tone}>{s.label}</Badge>;
+}

@@ -43,6 +43,9 @@ export const NAV: NavGroup[] = [
   {
     label: "Commerce",
     items: [
+      { href: "/commerce/customer-orders", label: "Customer Orders", icon: "receipt", anyOf: ["sales_orders.read"] },
+      { href: "/commerce/dispatches", label: "Dispatches", icon: "send", anyOf: ["sales_orders.read"] },
+      { href: "/commerce/customers", label: "Customers", icon: "contact", anyOf: ["customers.read", "sales_orders.read"] },
       { href: "/commerce/products", label: "Products", icon: "shirt", anyOf: ["products.read"] },
       { href: "/commerce/boms", label: "Bills of Materials", icon: "list-tree", anyOf: ["bom.read"] },
       { href: "/commerce/suppliers", label: "Suppliers", icon: "truck", anyOf: ["suppliers.read"] },
@@ -50,6 +53,14 @@ export const NAV: NavGroup[] = [
       { href: "/commerce/purchase-orders", label: "Purchase Orders", icon: "shopping-cart", anyOf: ["procurement.read"] },
       { href: "/commerce/goods-received", label: "Goods Received", icon: "package-open", anyOf: ["procurement.read"] },
       { href: "/commerce/costing", label: "Product Costing", icon: "calculator", anyOf: ["costing.read"] },
+    ],
+  },
+  {
+    label: "Workforce",
+    items: [
+      { href: "/workforce/employees", label: "Employees", icon: "id-card", anyOf: ["workforce.read", "attendance.record"] },
+      { href: "/workforce/attendance", label: "Attendance", icon: "clock", anyOf: ["workforce.read", "attendance.record"] },
+      { href: "/workforce/setup", label: "Departments & Shifts", icon: "network", anyOf: ["workforce.read"] },
     ],
   },
   {

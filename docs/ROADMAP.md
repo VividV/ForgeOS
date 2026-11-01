@@ -4,7 +4,9 @@
 
 **Phase 1: P0 foundation, complete and tested.**
 
-**Phase 2 (this release): procurement, quality control and costing, complete and tested** (acceptance tests 5, 6 and 7). The remaining P1 items and all P2 items below are **not built yet**. Their navigation entries are hidden rather than shown as placeholders.
+**Phase 2: procurement, quality control and costing, complete and tested** (acceptance tests 5, 6 and 7).
+
+**Phase 3 (this release): customer orders and workforce, complete and tested.** Billing and the P2 items below are **not built yet**. Their navigation entries are hidden rather than shown as placeholders.
 
 ## Known limitations of the current build
 
@@ -16,6 +18,8 @@
 | Overhead allocation | Automatic overheads are allocated on completion by basis (per labour hour, per unit, % of material, per order). Period-based absorption (monthly overhead pools spread across all output) is not yet supported |
 | Single final output per order | Partial completions (stocking batches before the order closes) are not yet supported |
 | Quality | Checklists, inspections, defects, corrective actions and the final-inspection gate are built. Quarantine stock (holding received goods pending inspection) is not; rejected goods on receipt never enter stock, and accepted goods enter stock immediately. Defect photos need storage (below) |
+| Customer orders | Returns, credit notes and tax invoices are not built; the printout is a pro-forma. Orders use the organisation currency. A confirmed order can't be edited (cancel and re-create). Payments are recorded manually; no payment-gateway link yet |
+| Workforce | Payroll is not calculated; attendance gives hours and overtime for export. Job cards are still assigned to people with logins (or a team name), not to employees without logins |
 | Procurement | Supplier invoices / three-way match, supplier price lists, multi-currency purchase orders (orders use the organisation currency) and emailing POs to suppliers are not yet built; POs print to PDF from the browser |
 | Photos / attachments | Not yet implemented (needs Supabase Storage buckets with signed URLs). The worker flow supports text defect and shortage reports |
 | Logo upload | Organisation logo upload not yet implemented (same storage dependency) |
@@ -31,13 +35,14 @@
 
 Done in phase 2: **procurement** (requisitions → approval → purchase orders with tax, discounts and shipping → goods received with partial deliveries and discrepancies; only accepted goods enter stock), **quality control** (checklists, inspections, defects with severity, pass/fail/conditional, corrective actions, defect analytics, final-inspection gate on completion) and **costing** (labour and overhead rates, labour/machine/overhead entries, estimate vs actual, gross margin, full-cost finished-goods valuation).
 
+Done in phase 3: **customer orders** (customers with balances and credit limits, orders that hold finished goods in stock, production planned per line for shortfalls with automatic allocation on completion, dispatches with delivery notes and delivery confirmation, payments and pro-forma invoices) and **workforce** (employees without logins, departments, shifts, daily attendance with hours and overtime, private pay rates used for labour costing).
+
 Next:
 
-1. **Customer orders** → production orders (the `source` field exists).
-2. **Workforce**: employees without logins, departments, shifts, optional attendance, skills.
-3. **Billing**: Paystack (Starter ₦40k / Growth ₦120k / Professional ₦250k / Enterprise), webhooks, plan limits, trials, invoices; Flutterwave as an alternative provider.
-4. Quarantine stock, supplier invoices / three-way match.
-5. Stock counts (count sheets) and storage for photos/attachments.
+1. **Billing**: Paystack (Starter ₦40k / Growth ₦120k / Professional ₦250k / Enterprise), webhooks, plan limits, trials, invoices; Flutterwave as an alternative provider.
+2. Quarantine stock, supplier invoices / three-way match.
+3. Customer returns and credit notes; tax invoices (orders print a pro-forma); assigning job cards to employees without logins.
+4. Stock counts (count sheets) and storage for photos/attachments.
 
 ## P2: intelligence
 

@@ -12,12 +12,14 @@ export function CostEntryButtons({
   operations,
   workCentres,
   members,
+  employees = [],
   labourRate,
 }: {
   orderId: string;
   operations: { value: string; label: string }[];
   workCentres: { value: string; label: string }[];
   members: { value: string; label: string }[];
+  employees?: { value: string; label: string }[];
   labourRate: number | null;
 }) {
   return (
@@ -26,12 +28,17 @@ export function CostEntryButtons({
         triggerLabel="Labour"
         triggerSize="sm"
         title="Record labour"
-        description={labourRate != null ? `Leave the rate blank to use the default labour rate (${labourRate}/hour).` : "No default labour rate is set. Enter a rate, or set one under Product costing."}
-        schema={z.object({ hours, rate: labourRate == null ? z.string().min(1, "Enter a rate") : z.string().nullish() })}
+        description={
+          labourRate != null
+            ? `Leave the rate blank to use the employee's hourly rate, or the default labour rate (${labourRate}/hour).`
+            : "Leave the rate blank to use the employee's hourly rate. No default labour rate is set."
+        }
+        schema={z.object({ hours })}
         fields={[
           { name: "hours", label: "Hours", type: "number", required: true, step: "any", min: "0" },
-          { name: "rate", label: "Rate per hour", type: "number", step: "any", min: "0", required: labourRate == null },
-          { name: "worker_id", label: "Worker", type: "select", options: members },
+          { name: "rate", label: "Rate per hour", type: "number", step: "any", min: "0" },
+          ...(employees.length ? [{ name: "employee_id", label: "Employee", type: "select" as const, options: employees }] : []),
+          { name: "worker_id", label: employees.length ? "Or team member (login)" : "Worker", type: "select", options: members },
           { name: "worker_name", label: "Or worker name (not a user)" },
           { name: "operation_id", label: "Step", type: "select", options: operations },
           { name: "entry_date", label: "Date", type: "date" },

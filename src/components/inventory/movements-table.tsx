@@ -17,6 +17,7 @@ export const TXN_LABEL: Record<string, { label: string; tone: Tone }> = {
   wastage: { label: "Wastage", tone: "danger" },
   stock_count_correction: { label: "Count correction", tone: "warning" },
   reversal: { label: "Reversal", tone: "neutral" },
+  sales_dispatch: { label: "Dispatched to customer", tone: "accent" },
 };
 
 export type MovementRow = {
