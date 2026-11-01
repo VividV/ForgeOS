@@ -60,6 +60,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               <PrintReport />
               {ctx.can("reports.export") && (
                 <Button asChild variant="primary">
+                  {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- file download, not a page */}
                   <a href={`/api/export/report?${qs}`}>
                     <Download /> Export CSV
                   </a>

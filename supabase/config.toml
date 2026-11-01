@@ -1,0 +1,31 @@
+# Supabase CLI configuration for local development and CI (`supabase start`).
+project_id = "forgeos"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/**"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Local/CI only: confirm instantly. Production keeps email confirmation ON.
+enable_confirmations = false
+double_confirm_changes = true
+
+[auth.rate_limit]
+email_sent = 30
+sign_in_sign_ups = 60
+token_refresh = 150

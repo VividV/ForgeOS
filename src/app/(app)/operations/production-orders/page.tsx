@@ -50,6 +50,7 @@ export default async function ProductionOrdersPage({ searchParams }: { searchPar
           <>
             {ctx.can("production_orders.export") && (
               <Button asChild>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- file download, not a page */}
                 <a href="/api/export/production-orders">
                   <Download /> Export CSV
                 </a>

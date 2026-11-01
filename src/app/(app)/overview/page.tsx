@@ -67,8 +67,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <ListToolbar
           search={false}
           filters={[
-            { name: "range", label: "Period", options: [{ value: "7", label: "Last 7 days" }, { value: "30", label: "Last 30 days" }, { value: "90", label: "Last 90 days" }] },
-            { name: "factory", label: "Factory", options: factories },
+            { name: "range", label: "Period", emptyLabel: "Last 30 days", options: [{ value: "7", label: "Last 7 days" }, { value: "90", label: "Last 90 days" }] },
+            { name: "factory", label: "Factory", emptyLabel: "All factories", options: factories },
           ]}
         />
       </Card>

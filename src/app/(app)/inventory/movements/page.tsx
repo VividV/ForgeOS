@@ -37,7 +37,8 @@ export default async function MovementsPage({ searchParams }: { searchParams: Pr
         actions={
           ctx.can("inventory.export") && (
             <Button asChild>
-              <a href={`/api/export/movements${exportQs ? `?${exportQs}` : ""}`}>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- file download, not a page */}
+                  <a href={`/api/export/movements${exportQs ? `?${exportQs}` : ""}`}>
                 <Download /> Export CSV
               </a>
             </Button>

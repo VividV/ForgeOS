@@ -39,6 +39,7 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
           <>
             {ctx.can("materials.export") && (
               <Button asChild>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- file download, not a page */}
                 <a href="/api/export/materials">
                   <Download /> Export CSV
                 </a>

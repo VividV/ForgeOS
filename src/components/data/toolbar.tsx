@@ -13,7 +13,7 @@ export function ListToolbar({
 }: {
   search?: boolean;
   placeholder?: string;
-  filters?: { name: string; label: string; options: { value: string; label: string }[] }[];
+  filters?: { name: string; label: string; options: { value: string; label: string }[]; emptyLabel?: string }[];
   children?: React.ReactNode;
 }) {
   const router = useRouter();
@@ -62,7 +62,7 @@ export function ListToolbar({
       </div>}
       {filters.map((f) => (
         <Select key={f.name} aria-label={f.label} value={sp.get(f.name) ?? ""} onChange={(e) => push({ [f.name]: e.target.value })} className="h-8 text-[13px] sm:w-44">
-          <option value="">{f.label}: all</option>
+          <option value="">{f.emptyLabel ?? `${f.label}: all`}</option>
           {f.options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
