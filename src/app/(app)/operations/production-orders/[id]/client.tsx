@@ -380,6 +380,8 @@ export function CompleteDialog({
   maxByMaterial,
   canException,
   uom,
+  inspection,
+  requireFinal = false,
 }: {
   id: string;
   planned: number;
@@ -388,10 +390,13 @@ export function CompleteDialog({
   maxByMaterial: number;
   canException: boolean;
   uom: string;
+  /** Final-inspection totals; when present, accepted units cannot exceed units that passed. */
+  inspection?: { passed: number; rejected: number } | null;
+  requireFinal?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [good, setGood] = React.useState(String(lastStepGood));
+  const [good, setGood] = React.useState(String(inspection ? Math.min(lastStepGood, inspection.passed) : lastStepGood));
   const [rej, setRej] = React.useState(String(lastStepRejected));
   const [note, setNote] = React.useState("");
   const [exception, setException] = React.useState(false);
@@ -400,12 +405,22 @@ export function CompleteDialog({
   const idem = React.useRef(idempotencyKey());
   const total = Number(good || 0) + Number(rej || 0);
   const overMaterial = total > maxByMaterial + 1e-6;
+  const overPassed = !!inspection && Number(good || 0) > inspection.passed + 1e-6;
+  const blockedByGate = requireFinal && !inspection;
   return (
     <Dialog
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(o) => {
+        // re-derive defaults each time: inspections may have been recorded since the page loaded
+        if (o) {
+          setGood(String(inspection ? Math.min(lastStepGood, inspection.passed) : lastStepGood));
+          setRej(String(lastStepRejected + (inspection ? inspection.rejected : 0)));
+          setError(null);
+        }
+        setOpen(o);
+      }}
       title="Complete production order"
-      description="Accepted units are added to finished-goods stock at actual material cost. Rejected units are recorded but never stocked."
+      description="Accepted units are added to finished-goods stock at full actual cost (material, labour, machine and overhead). Rejected units are recorded but never stocked."
       trigger={
         <Button variant="primary">
           <CheckCircle2 /> Complete order
@@ -425,6 +440,13 @@ export function CompleteDialog({
         <p className="text-xs text-muted">
           Planned {formatQty(planned)} · last step recorded {formatQty(lastStepGood)} good · materials issued support up to {formatQty(Math.max(maxByMaterial, 0), 2)} units.
         </p>
+        {inspection && (
+          <p className="text-xs text-muted">
+            Final inspection: {formatQty(inspection.passed)} passed, {formatQty(inspection.rejected)} rejected. Accepted units cannot exceed what passed.
+          </p>
+        )}
+        {overPassed && <div className="rounded-md bg-danger-soft px-3 py-2 text-[13px] text-danger-ink">Only {formatQty(inspection!.passed)} units passed final inspection. Record another inspection or reduce the accepted quantity.</div>}
+        {blockedByGate && <div className="rounded-md bg-warning-soft px-3 py-2 text-[13px] text-warning-ink">This organisation requires a final inspection before output can be stocked. Record one from the Quality card first.</div>}
         {overMaterial && (
           <div className="rounded-md bg-warning-soft px-3 py-2 text-[13px] text-warning-ink">
             This output needs more material than was issued. Issue the missing material first
@@ -442,7 +464,7 @@ export function CompleteDialog({
           <Button
             variant="primary"
             loading={pending}
-            disabled={total <= 0 || (overMaterial && !exception) || (exception && !note.trim())}
+            disabled={total <= 0 || overPassed || blockedByGate || (overMaterial && !exception) || (exception && !note.trim())}
             onClick={() =>
               start(async () => {
                 setError(null);

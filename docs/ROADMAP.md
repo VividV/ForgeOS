@@ -2,7 +2,9 @@
 
 ## Status
 
-**Phase 1 (this release): P0 foundation, complete and tested.** The P1 and P2 items below are **not built yet**. Their navigation entries are hidden rather than shown as placeholders.
+**Phase 1: P0 foundation, complete and tested.**
+
+**Phase 2 (this release): procurement, quality control and costing, complete and tested** (acceptance tests 5, 6 and 7). The remaining P1 items and all P2 items below are **not built yet**. Their navigation entries are hidden rather than shown as placeholders.
 
 ## Known limitations of the current build
 
@@ -10,9 +12,11 @@
 |---|---|
 | Not deployed | No live URL yet; see [DEPLOYMENT.md](DEPLOYMENT.md) |
 | FIFO valuation | Selectable as "coming soon", blocked server-side. Weighted average is applied everywhere. Needs cost layers |
-| Costing | Finished goods are valued at actual **material** cost per accepted unit. Labour, machine and overhead costing arrive with the P1 costing module |
+| Costing | Finished goods are valued at full actual cost (material + labour + machine + overhead + other) per accepted unit. Standard costing variance analysis by cause (price vs usage) is not yet broken out; estimate vs actual is shown per cost type |
+| Overhead allocation | Automatic overheads are allocated on completion by basis (per labour hour, per unit, % of material, per order). Period-based absorption (monthly overhead pools spread across all output) is not yet supported |
 | Single final output per order | Partial completions (stocking batches before the order closes) are not yet supported |
-| Quality module | Rejected units are recorded and never stocked, but reusable inspection templates, defect categories, severity and corrective actions are P1 |
+| Quality | Checklists, inspections, defects, corrective actions and the final-inspection gate are built. Quarantine stock (holding received goods pending inspection) is not; rejected goods on receipt never enter stock, and accepted goods enter stock immediately. Defect photos need storage (below) |
+| Procurement | Supplier invoices / three-way match, supplier price lists, multi-currency purchase orders (orders use the organisation currency) and emailing POs to suppliers are not yet built; POs print to PDF from the browser |
 | Photos / attachments | Not yet implemented (needs Supabase Storage buckets with signed URLs). The worker flow supports text defect and shortage reports |
 | Logo upload | Organisation logo upload not yet implemented (same storage dependency) |
 | Column-level cost hiding | Costs are hidden in the UI, exports and worker views for users without `costing.read`, but RLS on `stock_items.average_cost` is row-level only. Move cost columns behind a security-definer view before onboarding sensitive customers |
@@ -25,13 +29,15 @@
 
 ## P1: commercial operating capabilities (next)
 
-1. **Procurement**: purchase requisitions → approval → purchase orders (taxes, discounts, shipping) → goods received with partial deliveries and discrepancies → stock. Supplier tables already exist.
-2. **Quality control**: templates, inspections at configurable stages, defect categories and severity, pass/fail/conditional, corrective actions, defect analytics; quarantine stock.
-3. **Costing**: labour entries and rates, machine hours (work-centre hourly cost exists), overhead allocation, estimated vs actual, margins.
-4. **Customer orders** → production orders (the `source` field exists).
-5. **Workforce**: employees without logins, departments, shifts, optional attendance, skills.
-6. **Billing**: Paystack (Starter ₦40k / Growth ₦120k / Professional ₦250k / Enterprise), webhooks, plan limits, trials, invoices; Flutterwave as an alternative provider.
-7. Stock counts (count sheets) and storage for photos/attachments.
+Done in phase 2: **procurement** (requisitions → approval → purchase orders with tax, discounts and shipping → goods received with partial deliveries and discrepancies; only accepted goods enter stock), **quality control** (checklists, inspections, defects with severity, pass/fail/conditional, corrective actions, defect analytics, final-inspection gate on completion) and **costing** (labour and overhead rates, labour/machine/overhead entries, estimate vs actual, gross margin, full-cost finished-goods valuation).
+
+Next:
+
+1. **Customer orders** → production orders (the `source` field exists).
+2. **Workforce**: employees without logins, departments, shifts, optional attendance, skills.
+3. **Billing**: Paystack (Starter ₦40k / Growth ₦120k / Professional ₦250k / Enterprise), webhooks, plan limits, trials, invoices; Flutterwave as an alternative provider.
+4. Quarantine stock, supplier invoices / three-way match.
+5. Stock counts (count sheets) and storage for photos/attachments.
 
 ## P2: intelligence
 

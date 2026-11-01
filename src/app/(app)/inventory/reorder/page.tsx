@@ -1,4 +1,5 @@
-import { BellRing } from "lucide-react";
+import { BellRing, FilePlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { StockStatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -38,7 +39,19 @@ export default async function ReorderPage() {
 
   return (
     <>
-      <PageHeader title="Reorder alerts" description="Materials at or below their reorder level, plus shortages blocking approved production orders. Suggested quantity = refill to maximum (or reorder level + reorder quantity) and cover open shortages." />
+      <PageHeader
+        title="Reorder alerts"
+        actions={
+          rows.length > 0 &&
+          ctx.can("requisitions.create") && (
+            <Button asChild variant="primary">
+              <Link href="/commerce/requisitions/new?suggest=1">
+                <FilePlus /> Create requisition
+              </Link>
+            </Button>
+          )
+        }
+        description="Materials at or below their reorder level, plus shortages blocking approved production orders. Suggested quantity = refill to maximum (or reorder level + reorder quantity) and cover open shortages." />
       <Card>
         {rows.length === 0 ? (
           <EmptyState icon={<BellRing />} title="Nothing to reorder" description="Set reorder levels on materials so ForgeOS can warn you before you run out." />

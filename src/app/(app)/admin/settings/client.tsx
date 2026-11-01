@@ -34,7 +34,7 @@ export function OrgSettingsForm({ defaults, editable }: { defaults: Record<strin
 export function PrefsForm({ defaults, editable }: { defaults: Record<string, unknown>; editable: boolean }) {
   return (
     <SchemaForm
-      schema={configSchema.extend({ timezone: z.string().min(3), allow_negative_stock: z.boolean().optional() })}
+      schema={configSchema.extend({ timezone: z.string().min(3), allow_negative_stock: z.boolean().optional(), require_final_inspection: z.boolean().optional(), po_approval_threshold: z.string().nullish() })}
       defaultValues={defaults}
       fields={[
         { name: "currency", label: "Currency", type: "select", required: true, disabled: !editable, options: [{ value: "NGN", label: "NGN (₦)" }, { value: "USD", label: "USD ($)" }, { value: "GBP", label: "GBP (£)" }, { value: "EUR", label: "EUR (€)" }], hint: "Changing currency relabels values; it does not convert them." },
@@ -45,6 +45,8 @@ export function PrefsForm({ defaults, editable }: { defaults: Record<string, unk
         { name: "inventory_valuation", label: "Inventory valuation", type: "select", required: true, disabled: !editable, options: [{ value: "weighted_average", label: "Weighted average" }, { value: "fifo", label: "FIFO (coming soon)" }] },
         { name: "costing_method", label: "Costing", type: "select", required: true, disabled: !editable, options: [{ value: "actual", label: "Actual" }, { value: "standard", label: "Standard" }] },
         { name: "require_production_approval", label: "Production orders need approval", type: "checkbox", disabled: !editable },
+        { name: "require_final_inspection", label: "Require a final quality inspection before output is stocked", type: "checkbox", disabled: !editable },
+        { name: "po_approval_threshold", label: "Auto-approve purchase orders up to", type: "number", min: "0", step: "any", disabled: !editable, hint: "0 means every purchase order needs an approver." },
       ]}
       action={saveConfigurationSettings}
     />

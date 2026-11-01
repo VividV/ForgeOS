@@ -10,6 +10,7 @@ export const metadata = { title: "Alerts" };
 const KIND: Record<string, string> = {
   overdue: "Overdue order", materials_pending: "Waiting for materials", over_consumption: "Over-consumption", idle_work_centre: "Idle work centre",
   rejection_rising: "Quality", low_stock: "Low stock", out_of_stock: "Out of stock",
+  po_overdue: "Late delivery", po_pending_approval: "PO approval", corrective_action_overdue: "Corrective action",
 };
 
 export default async function AlertsPage() {
@@ -19,7 +20,7 @@ export default async function AlertsPage() {
   const alerts = ((data ?? []) as { kind: string; severity: string; title: string; detail: string | null; link: string }[]).sort((a, b) => Number(b.severity === "critical") - Number(a.severity === "critical"));
   return (
     <>
-      <PageHeader title="Alerts" description="Detected by fixed rules on live records (not AI): overdue orders, shortages, over-consumption against the BOM, idle work centres, rising rejection and stock below reorder level." />
+      <PageHeader title="Alerts" description="Detected by fixed rules on live records (not AI): overdue orders, shortages, over-consumption against the BOM, idle work centres, rising rejection, stock below reorder level, late supplier deliveries, purchase orders awaiting approval and overdue corrective actions." />
       <Card>
         {alerts.length === 0 ? (
           <EmptyState icon={<ShieldCheck />} title="All clear" description="No rule is currently triggered." />
@@ -33,7 +34,7 @@ export default async function AlertsPage() {
                     <p className="text-[13px] font-medium">{a.title}</p>
                     {a.detail && <p className="text-xs text-muted">{a.detail}</p>}
                   </div>
-                  <Badge tone={a.severity === "critical" ? "danger" : "warning"}>{KIND[a.kind] ?? a.kind}</Badge>
+                  <Badge tone={a.severity === "critical" ? "danger" : a.severity === "info" ? "info" : "warning"}>{KIND[a.kind] ?? a.kind}</Badge>
                 </Link>
               </li>
             ))}

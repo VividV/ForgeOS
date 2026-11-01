@@ -60,3 +60,26 @@ const BOM: Record<string, Tone> = { draft: "neutral", pending_approval: "info", 
 export function BomStatusBadge({ status }: { status: string }) {
   return <Badge tone={BOM[status] ?? "neutral"}>{status === "pending_approval" ? "Pending approval" : status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
 }
+
+const PO: Record<string, { label: string; tone: Tone }> = {
+  draft: { label: "Draft", tone: "neutral" },
+  pending_approval: { label: "Pending approval", tone: "info" },
+  approved: { label: "Approved", tone: "accent" },
+  sent: { label: "Sent to supplier", tone: "accent" },
+  partially_received: { label: "Partially received", tone: "warning" },
+  received: { label: "Received", tone: "success" },
+  closed: { label: "Closed", tone: "neutral" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+  submitted: { label: "Awaiting approval", tone: "info" },
+  rejected: { label: "Rejected", tone: "danger" },
+  ordered: { label: "Ordered", tone: "success" },
+};
+export function ProcurementStatusBadge({ status }: { status: string }) {
+  const s = PO[status] ?? { label: status, tone: "neutral" as Tone };
+  return <Badge tone={s.tone} dot>{s.label}</Badge>;
+}
+
+const QC: Record<string, Tone> = { pass: "success", fail: "danger", conditional: "warning" };
+export function QcResultBadge({ result }: { result: string }) {
+  return <Badge tone={QC[result] ?? "neutral"}>{result === "conditional" ? "Conditional" : result === "pass" ? "Pass" : "Fail"}</Badge>;
+}

@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type ReportKey = "production" | "efficiency" | "consumption" | "valuation" | "movements" | "wastage";
+export type ReportKey = "production" | "efficiency" | "consumption" | "valuation" | "movements" | "wastage" | "procurement" | "suppliers" | "quality" | "costing";
 
 export const REPORTS: { key: ReportKey; title: string; description: string; perm: string[]; costs?: boolean }[] = [
   { key: "production", title: "Production report", description: "Orders completed in the period: planned vs actual output, rejects and material cost.", perm: ["production_orders.read"] },
@@ -10,6 +10,10 @@ export const REPORTS: { key: ReportKey; title: string; description: string; perm
   { key: "wastage", title: "Wastage report", description: "Recorded material wastage with reasons.", perm: ["production_orders.read"] },
   { key: "valuation", title: "Inventory valuation", description: "Current stock on hand by item at weighted average cost.", perm: ["inventory.read"], costs: true },
   { key: "movements", title: "Stock movement summary", description: "Inbound and outbound quantities per item and movement type in the period.", perm: ["inventory.read"] },
+  { key: "procurement", title: "Purchase orders", description: "Purchase orders raised in the period with value, received quantity and delivery status.", perm: ["procurement.read"] },
+  { key: "suppliers", title: "Supplier performance", description: "Per supplier: orders, value, on-time delivery and rejected goods for receipts in the period.", perm: ["procurement.read"] },
+  { key: "quality", title: "Quality and defects", description: "Inspections in the period with pass rates, and defects by category and severity.", perm: ["quality.read"] },
+  { key: "costing", title: "Production cost (estimate vs actual)", description: "Full cost of orders completed in the period: material, labour, machine and overhead, against the estimate.", perm: ["costing.read"], costs: true },
 ];
 
 export type Column = { key: string; label: string; kind?: "qty" | "money" | "pct" | "date" | "text" };
@@ -66,7 +70,7 @@ export async function buildReport(
         columns: money([
           { key: "number", label: "Order" }, { key: "product", label: "Product" }, { key: "factory", label: "Factory" }, { key: "completed", label: "Completed", kind: "date" },
           { key: "planned", label: "Planned", kind: "qty" }, { key: "accepted", label: "Accepted", kind: "qty" }, { key: "rejected", label: "Rejected", kind: "qty" },
-          { key: "vs_plan_pct", label: "Actual vs plan", kind: "pct" }, { key: "material_cost", label: "Material cost (actual)", kind: "money" }, { key: "unit_cost", label: "Cost / accepted unit", kind: "money" },
+          { key: "vs_plan_pct", label: "Actual vs plan", kind: "pct" }, { key: "material_cost", label: "Material cost (actual)", kind: "money" }, { key: "unit_cost", label: "Full cost / accepted unit", kind: "money" },
         ]),
         rows,
         totals: { planned: sum("planned"), accepted: sum("accepted"), rejected: sum("rejected"), material_cost: sum("material_cost") },
@@ -84,7 +88,7 @@ export async function buildReport(
   if (key === "consumption") {
     let q = sb
       .from("inventory_transactions")
-      .select("stock_item_id, txn_type, quantity, total_cost, production_order_id, production_orders!inner(factory_id), stock_item_details:stock_item_id(name, code, uom_code)")
+      .select("stock_item_id, txn_type, quantity, total_cost, production_order_id, production_orders!inner(factory_id), stock_item_details(name, code, uom_code)")
       .eq("organization_id", org)
       .in("txn_type", ["production_issue", "production_return"])
       .gte("occurred_at", fromIso)
@@ -123,7 +127,7 @@ export async function buildReport(
   if (key === "wastage") {
     let q = sb
       .from("production_scrap")
-      .select("quantity, reason, created_at, production_orders!inner(number, factory_id), stock_item_details:stock_item_id(name, uom_code), production_operations(name), profiles:created_by(full_name)")
+      .select("quantity, reason, created_at, production_orders!inner(number, factory_id), stock_item_details(name, uom_code), production_operations(name), profiles:created_by(full_name)")
       .eq("organization_id", org)
       .gte("created_at", fromIso)
       .lt("created_at", toExcl)
@@ -163,10 +167,165 @@ export async function buildReport(
     };
   }
 
+  if (key === "procurement") {
+    const { data, error } = await sb
+      .from("purchase_orders")
+      .select("number, status, order_date, expected_date, subtotal, discount_total, tax_total, shipping_cost, total, suppliers(name), purchase_order_items(quantity, quantity_received, quantity_rejected)")
+      .eq("organization_id", org)
+      .gte("order_date", opts.from)
+      .lte("order_date", opts.to)
+      .order("order_date")
+      .limit(5000);
+    if (error) throw error;
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = (data ?? []).map((p) => {
+      const items = (p.purchase_order_items as { quantity: number; quantity_received: number; quantity_rejected: number }[]) ?? [];
+      const ordered = items.reduce((a, i) => a + Number(i.quantity), 0);
+      const accepted = items.reduce((a, i) => a + Number(i.quantity_received) - Number(i.quantity_rejected), 0);
+      return {
+        number: p.number,
+        supplier: (p.suppliers as unknown as { name: string }).name,
+        ordered_on: p.order_date,
+        expected: p.expected_date,
+        status: String(p.status).replace(/_/g, " "),
+        received_pct: ordered ? (accepted / ordered) * 100 : null,
+        rejected: items.reduce((a, i) => a + Number(i.quantity_rejected), 0),
+        overdue: p.expected_date && p.expected_date < today && ["approved", "sent", "partially_received"].includes(p.status) ? "Yes" : "",
+        subtotal: Number(p.subtotal) - Number(p.discount_total),
+        tax: Number(p.tax_total),
+        total: Number(p.total),
+      };
+    });
+    return {
+      columns: ([
+        { key: "number", label: "PO" }, { key: "supplier", label: "Supplier" }, { key: "ordered_on", label: "Ordered", kind: "date" }, { key: "expected", label: "Expected", kind: "date" },
+        { key: "status", label: "Status" }, { key: "received_pct", label: "Received", kind: "pct" }, { key: "rejected", label: "Rejected qty", kind: "qty" }, { key: "overdue", label: "Overdue" },
+        { key: "subtotal", label: "Net of discount", kind: "money" }, { key: "tax", label: "Tax", kind: "money" }, { key: "total", label: "Total", kind: "money" },
+      ]),
+      rows,
+      totals: { subtotal: rows.reduce((a, r) => a + r.subtotal, 0), tax: rows.reduce((a, r) => a + r.tax, 0), total: rows.reduce((a, r) => a + r.total, 0) },
+    };
+  }
+
+  if (key === "suppliers") {
+    const { data, error } = await sb
+      .from("goods_receipts")
+      .select("received_at, purchase_orders!inner(id, expected_date, total, supplier_id, suppliers(name)), goods_receipt_items(quantity_received, quantity_rejected)")
+      .eq("organization_id", org)
+      .gte("received_at", fromIso)
+      .lt("received_at", toExcl)
+      .limit(10000);
+    if (error) throw error;
+    const by = new Map<string, { supplier: string; pos: Set<string>; deliveries: number; on_time: number; received: number; rejected: number; value: number }>();
+    for (const g of data ?? []) {
+      const po = g.purchase_orders as unknown as { id: string; expected_date: string | null; total: number; supplier_id: string; suppliers: { name: string } };
+      const r = by.get(po.supplier_id) ?? { supplier: po.suppliers.name, pos: new Set<string>(), deliveries: 0, on_time: 0, received: 0, rejected: 0, value: 0 };
+      if (!r.pos.has(po.id)) {
+        r.pos.add(po.id);
+        r.value += Number(po.total);
+      }
+      r.deliveries += 1;
+      if (!po.expected_date || g.received_at.slice(0, 10) <= po.expected_date) r.on_time += 1;
+      for (const i of (g.goods_receipt_items as { quantity_received: number; quantity_rejected: number }[]) ?? []) {
+        r.received += Number(i.quantity_received);
+        r.rejected += Number(i.quantity_rejected);
+      }
+      by.set(po.supplier_id, r);
+    }
+    const rows = [...by.values()]
+      .map((r) => ({ supplier: r.supplier, orders: r.pos.size, deliveries: r.deliveries, on_time_pct: r.deliveries ? (r.on_time / r.deliveries) * 100 : null, received: r.received, rejected: r.rejected, reject_pct: r.received ? (r.rejected / r.received) * 100 : null, value: r.value }))
+      .sort((a, b) => b.value - a.value);
+    return {
+      columns: ([
+        { key: "supplier", label: "Supplier" }, { key: "orders", label: "POs delivered against", kind: "qty" }, { key: "deliveries", label: "Deliveries", kind: "qty" }, { key: "on_time_pct", label: "On time", kind: "pct" },
+        { key: "received", label: "Qty received", kind: "qty" }, { key: "rejected", label: "Qty rejected", kind: "qty" }, { key: "reject_pct", label: "Reject rate", kind: "pct" }, { key: "value", label: "PO value", kind: "money" },
+      ]),
+      rows,
+    };
+  }
+
+  if (key === "quality") {
+    const { data, error } = await sb
+      .from("quality_checks")
+      .select("number, check_type, is_final, result, quantity_inspected, quantity_passed, quantity_rejected, inspected_at, production_orders(number, factory_id), goods_receipts(number), products(name), quality_defects(category, severity, quantity)")
+      .eq("organization_id", org)
+      .gte("inspected_at", fromIso)
+      .lt("inspected_at", toExcl)
+      .order("inspected_at")
+      .limit(10000);
+    if (error) throw error;
+    const rows = (data ?? [])
+      .filter((c) => !opts.factory || (c.production_orders as unknown as { factory_id: string } | null)?.factory_id === opts.factory)
+      .map((c) => {
+        const defects = (c.quality_defects as { category: string; severity: string; quantity: number }[]) ?? [];
+        return {
+          date: c.inspected_at.slice(0, 10),
+          number: c.number,
+          source: c.check_type === "production" ? `${(c.production_orders as unknown as { number: string } | null)?.number ?? ""}${c.is_final ? " (final)" : ""}` : `GRN ${(c.goods_receipts as unknown as { number: string } | null)?.number ?? ""}`,
+          product: (c.products as unknown as { name: string } | null)?.name ?? "",
+          result: c.result,
+          inspected: Number(c.quantity_inspected),
+          passed: Number(c.quantity_passed),
+          rejected: Number(c.quantity_rejected),
+          pass_pct: Number(c.quantity_inspected) ? (Number(c.quantity_passed) / Number(c.quantity_inspected)) * 100 : null,
+          defects: defects.map((d) => `${d.category} (${d.severity}) ×${Number(d.quantity)}`).join("; "),
+        };
+      });
+    const sum = (k: "inspected" | "passed" | "rejected") => rows.reduce((a, r) => a + r[k], 0);
+    return {
+      columns: [
+        { key: "date", label: "Date", kind: "date" }, { key: "number", label: "QC" }, { key: "source", label: "Source" }, { key: "product", label: "Product" }, { key: "result", label: "Result" },
+        { key: "inspected", label: "Inspected", kind: "qty" }, { key: "passed", label: "Passed", kind: "qty" }, { key: "rejected", label: "Rejected", kind: "qty" }, { key: "pass_pct", label: "Pass rate", kind: "pct" }, { key: "defects", label: "Defects" },
+      ],
+      rows,
+      totals: { inspected: sum("inspected"), passed: sum("passed"), rejected: sum("rejected") },
+    };
+  }
+
+  if (key === "costing") {
+    let q = sb
+      .from("production_cost_snapshots")
+      .select("quantity_planned, quantity_accepted, material_cost, labour_cost, machine_cost, overhead_cost, other_cost, total_cost, unit_cost, estimated_total, estimated_unit_cost, selling_price, created_at, production_orders!inner(number, factory_id), products(name)")
+      .eq("organization_id", org)
+      .gte("created_at", fromIso)
+      .lt("created_at", toExcl)
+      .order("created_at");
+    if (opts.factory) q = q.eq("production_orders.factory_id", opts.factory);
+    const { data, error } = await q.limit(5000);
+    if (error) throw error;
+    const rows = (data ?? []).map((c) => ({
+      completed: c.created_at.slice(0, 10),
+      order: (c.production_orders as unknown as { number: string }).number,
+      product: (c.products as unknown as { name: string }).name,
+      accepted: Number(c.quantity_accepted),
+      material: Number(c.material_cost),
+      labour: Number(c.labour_cost),
+      machine: Number(c.machine_cost),
+      overhead: Number(c.overhead_cost) + Number(c.other_cost),
+      total: Number(c.total_cost),
+      estimated_total: Number(c.estimated_total),
+      variance: Number(c.total_cost) - Number(c.estimated_total),
+      unit_cost: Number(c.unit_cost),
+      estimated_unit: Number(c.estimated_unit_cost),
+      margin_pct: c.selling_price && Number(c.selling_price) > 0 ? ((Number(c.selling_price) - Number(c.unit_cost)) / Number(c.selling_price)) * 100 : null,
+    }));
+    const sum = (k: keyof (typeof rows)[number]) => rows.reduce((a, r) => a + Number(r[k] ?? 0), 0);
+    return {
+      columns: money([
+        { key: "completed", label: "Completed", kind: "date" }, { key: "order", label: "Order" }, { key: "product", label: "Product" }, { key: "accepted", label: "Accepted", kind: "qty" },
+        { key: "material", label: "Material", kind: "money" }, { key: "labour", label: "Labour", kind: "money" }, { key: "machine", label: "Machine", kind: "money" }, { key: "overhead", label: "Overhead & other", kind: "money" },
+        { key: "total", label: "Actual total", kind: "money" }, { key: "estimated_total", label: "Estimated total", kind: "money" }, { key: "variance", label: "Variance", kind: "money" },
+        { key: "unit_cost", label: "Actual / unit", kind: "money" }, { key: "estimated_unit", label: "Estimate / unit", kind: "money" }, { key: "margin_pct", label: "Gross margin", kind: "pct" },
+      ]),
+      rows,
+      totals: { accepted: sum("accepted"), material: sum("material"), labour: sum("labour"), machine: sum("machine"), overhead: sum("overhead"), total: sum("total"), estimated_total: sum("estimated_total"), variance: sum("variance") },
+    };
+  }
+
   // movements summary
   const { data, error } = await sb
     .from("inventory_transactions")
-    .select("stock_item_id, txn_type, quantity, total_cost, stock_item_details:stock_item_id(name, code, uom_code)")
+    .select("stock_item_id, txn_type, quantity, total_cost, stock_item_details(name, code, uom_code)")
     .eq("organization_id", org)
     .gte("occurred_at", fromIso)
     .lt("occurred_at", toExcl)

@@ -22,6 +22,7 @@ export const NAV: NavGroup[] = [
       { href: "/operations/production-orders", label: "Production Orders", icon: "factory", anyOf: ["production_orders.read"] },
       { href: "/operations/planning", label: "Production Planning", icon: "kanban", anyOf: ["production_orders.read"] },
       { href: "/operations/job-cards", label: "Job Cards", icon: "clipboard-list", anyOf: ["job_cards.read", "job_cards.create"] },
+      { href: "/operations/quality", label: "Quality Control", icon: "shield-check", anyOf: ["quality.read"] },
       { href: "/operations/work-centres", label: "Factories & Work Centres", icon: "cog", anyOf: ["work_centres.read"] },
       { href: "/operations/stages", label: "Production Stages", icon: "route", anyOf: ["routing.read"] },
     ],
@@ -45,6 +46,10 @@ export const NAV: NavGroup[] = [
       { href: "/commerce/products", label: "Products", icon: "shirt", anyOf: ["products.read"] },
       { href: "/commerce/boms", label: "Bills of Materials", icon: "list-tree", anyOf: ["bom.read"] },
       { href: "/commerce/suppliers", label: "Suppliers", icon: "truck", anyOf: ["suppliers.read"] },
+      { href: "/commerce/requisitions", label: "Purchase Requisitions", icon: "file-plus", anyOf: ["procurement.read", "requisitions.create"] },
+      { href: "/commerce/purchase-orders", label: "Purchase Orders", icon: "shopping-cart", anyOf: ["procurement.read"] },
+      { href: "/commerce/goods-received", label: "Goods Received", icon: "package-open", anyOf: ["procurement.read"] },
+      { href: "/commerce/costing", label: "Product Costing", icon: "calculator", anyOf: ["costing.read"] },
     ],
   },
   {

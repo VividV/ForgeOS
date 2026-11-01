@@ -131,4 +131,4 @@ export function MovementsTable({
 }
 
 export const MOVEMENT_SELECT =
-  "id, occurred_at, txn_type, quantity, unit_cost, total_cost, balance_after, reason, notes, production_order_id, reversal_of_id, negative_override, warehouses(code, name), stock_item_details:stock_item_id(name, code, uom_code, material_id, product_id), profiles:created_by(full_name), production_orders(number)";
+  "id, occurred_at, txn_type, quantity, unit_cost, total_cost, balance_after, reason, notes, production_order_id, reversal_of_id, negative_override, warehouses(code, name), stock_item_details(name, code, uom_code, material_id, product_id), profiles:created_by(full_name), production_orders(number)";

@@ -15,6 +15,8 @@ export type OrgSettings = {
   costing_method: string;
   allow_negative_stock: boolean;
   require_production_approval: boolean;
+  require_final_inspection: boolean;
+  po_approval_threshold: number;
 };
 
 export type OrgContext = {

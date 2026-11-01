@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-// Acceptance tests 1–5 and 10 from the build brief, driven through the real UI.
+// Acceptance tests 1–7 and 10 from the build brief, driven through the real UI.
 // Runs serially: each step builds on the data created by the previous one.
 
 const run = Date.now().toString(36);
@@ -206,7 +206,7 @@ test("3. inventory: receive, transfer, adjust, available stock and audit history
   await page.reload();
   // 300 received − 5 damaged = 295 on hand; nothing reserved, so available = 295
   await expect(page.getByText("295 m").first()).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Overflow store" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Overflow store", exact: true }).first()).toBeVisible();
   await page.goto("/admin/audit?action=stock_adjustment");
   await expect(page.getByText(/Stock adjustment ADJ-/)).toBeVisible();
 });
@@ -298,28 +298,175 @@ test("4. production: 100 units from plan to finished goods, with the worker upda
   await toast(page, "Wastage recorded");
 });
 
-test("5. quality: only accepted units enter sellable finished goods", async ({ browser }) => {
+test("6. costing: labour and overhead rates, entries on the order, estimate vs actual", async ({ browser }) => {
   const page = await ownerPage(browser);
+  await page.goto("/commerce/costing");
+  await page.getByRole("button", { name: "Add rate" }).click();
+  let d = page.getByRole("dialog");
+  await d.getByLabel(/^Name/).fill("Tailor rate");
+  await d.getByLabel(/^Rate/).fill("500");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Rate saved");
+  await page.getByRole("button", { name: "Add rate" }).click();
+  d = page.getByRole("dialog");
+  await d.getByLabel(/^Type/).selectOption("overhead");
+  await d.getByLabel(/^Name/).fill("Factory overhead");
+  await d.getByLabel(/^Applied/).selectOption("percent_material");
+  await d.getByLabel(/^Rate/).fill("10");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Rate saved");
+  await expect(page.getByText("Default labour rate: ₦500.00 per hour.")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Men's Cotton Shirt/ })).toBeVisible();
+
   await page.goto(orderUrl);
+  await page.getByRole("button", { name: "Labour", exact: true }).click();
+  d = page.getByRole("dialog");
+  await d.getByLabel(/^Hours/).fill("40");
+  await d.getByLabel("Or worker name (not a user)").fill("Sewing line A");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Cost recorded");
+  await page.getByRole("button", { name: "Other cost" }).click();
+  d = page.getByRole("dialog");
+  await d.getByLabel(/^Amount/).fill("5000");
+  await d.getByLabel(/^Description/).fill("Shirt boxes");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Cost recorded");
+  const costing = page.getByRole("region", { name: "Costing" });
+  await expect(costing).toContainText("20,000.00"); // 40 h × ₦500
+  await expect(costing).toContainText("5,000.00");
+});
+
+test("5. quality: final inspection gates completion; only accepted units enter finished goods", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  // a reusable checklist
+  await page.goto("/operations/quality/templates/new");
+  await page.getByLabel(/^Name\*?$/).fill("Final shirt inspection");
+  await page.getByLabel("Check 1").fill("Stitching straight, no loose threads");
+  await page.getByRole("button", { name: "Add check" }).click();
+  await page.getByLabel("Check 2").fill("Chest width");
+  await page.getByRole("button", { name: "Save checklist" }).click();
+  await page.waitForURL(/\/operations\/quality\/templates$/);
+  await expect(page.getByRole("row", { name: /Final shirt inspection/ })).toBeVisible();
+
+  await page.goto(orderUrl);
+  await page.getByRole("button", { name: "Record inspection" }).click();
+  const qc = page.getByRole("dialog");
+  await qc.getByLabel("Checklist").selectOption({ label: "Final shirt inspection" });
+  await expect(qc.getByLabel(/Quantity inspected/)).toHaveValue("95");
+  await qc.getByLabel("Quantity rejected").fill("2");
+  await qc.getByLabel("Result for Stitching straight, no loose threads").selectOption("fail");
+  await qc.getByRole("button", { name: "Add defect" }).click();
+  await qc.getByLabel("Defect category").selectOption("Stitching");
+  await qc.getByLabel("Defect quantity").fill("2");
+  await qc.getByRole("button", { name: "Add corrective action" }).click();
+  await qc.getByLabel("Corrective action", { exact: true }).fill("Re-train sewing line A on seam tension");
+  await qc.getByRole("button", { name: "Save inspection" }).click();
+  await toast(page, "Inspection recorded");
+  await expect(page.getByText(/Final inspection: 93 passed, 2 rejected/).first()).toBeVisible();
+
   await page.getByRole("button", { name: "Complete order" }).click();
   const dlg = page.getByRole("dialog");
-  await expect(dlg.getByLabel(/Accepted/)).toHaveValue("95");
-  await expect(dlg.getByLabel(/Rejected/)).toHaveValue("5");
+  await expect(dlg.getByLabel(/Accepted/)).toHaveValue("93"); // limited to units that passed
+  await dlg.getByLabel(/Accepted/).fill("95");
+  await expect(dlg.getByText(/Only 93 units passed final inspection/)).toBeVisible();
+  await expect(dlg.getByRole("button", { name: "Complete & stock output" })).toBeDisabled();
+  await dlg.getByLabel(/Accepted/).fill("93");
+  await dlg.getByLabel(/Rejected/).fill("7");
   await dlg.getByRole("button", { name: "Complete & stock output" }).click();
-  await toast(page, /95 accepted units added/);
+  await toast(page, /93 accepted units added/);
   await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Accepted (stocked)")).toBeVisible();
-  // material cost per accepted unit = actual issued cost / 95 (not / 100 planned)
-  await expect(page.getByText("Material cost per accepted unit (actual)")).toBeVisible();
+  await expect(page.getByText("Full cost per accepted unit")).toBeVisible();
+  // acceptance 6: material ₦370,200 + labour ₦20,000 + 10% overhead ₦37,020 + packaging ₦5,000 = ₦432,220 ÷ 93 accepted
+  const costing = page.getByRole("region", { name: "Costing" });
+  await expect(costing).toContainText("Final cost");
+  await expect(costing).toContainText("432,220.00");
+  await expect(costing).toContainText("4,647.53");
 
   await page.goto("/inventory/finished-goods");
   const row = page.getByRole("row", { name: /Men's Cotton Shirt/ });
-  await expect(row).toContainText("95");
+  await expect(row).toContainText("93");
   await expect(row).not.toContainText("100");
+
+  await page.goto("/operations/quality");
+  await expect(page.getByText("Re-train sewing line A on seam tension")).toBeVisible();
 
   // Mission Control reflects the real records
   await page.goto("/overview");
   await expect(page.getByText("Completed today").locator("..")).toContainText("1");
+});
+
+test("7. procurement: requisition → approval → purchase order → partial delivery with rejects → stock", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto("/commerce/suppliers");
+  await page.getByRole("button", { name: "Add supplier" }).click();
+  const d = page.getByRole("dialog");
+  await d.getByLabel(/^Supplier name/).fill("Kano Textiles");
+  await d.getByLabel(/^Code/).fill("KANO");
+  await d.getByLabel("Lead time (days)").fill("7");
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, /Supplier/);
+
+  await page.goto("/commerce/requisitions/new");
+  await page.getByLabel("Material").first().selectOption({ label: "Cotton fabric (FAB-COT)" });
+  await page.getByLabel("Quantity").first().fill("200");
+  await page.getByLabel("Why is this needed?").fill("Next month's shirt order");
+  await page.getByRole("button", { name: "Submit requisition" }).click();
+  await page.waitForURL(/\/commerce\/requisitions\/[0-9a-f-]{36}/);
+  await page.getByRole("button", { name: "Approve" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Approve" }).click();
+  await toast(page, /approved/i);
+  await page.getByRole("link", { name: "Create purchase order" }).click();
+  await page.waitForURL(/\/commerce\/purchase-orders\/new/);
+  await page.getByLabel(/^Supplier\*?$/).selectOption({ label: "Kano Textiles" });
+  await expect(page.getByLabel("Quantity").first()).toHaveValue("200");
+  await page.getByLabel("Unit price").first().fill("1400");
+  await page.getByLabel("Discount percent").first().fill("5");
+  await page.getByLabel("Tax percent").first().fill("7.5");
+  await page.getByLabel("Shipping").fill("5000");
+  // 200 × 1,400 = 280,000 − 5% = 266,000 + 7.5% VAT = 285,950 + 5,000 shipping
+  await expect(page.getByText("₦290,950.00")).toBeVisible();
+  await page.getByRole("button", { name: "Create purchase order" }).click();
+  await page.waitForURL(/\/commerce\/purchase-orders\/[0-9a-f-]{36}$/);
+  const poUrl = page.url();
+
+  await page.getByRole("button", { name: "Submit for approval" }).click();
+  await toast(page, /approval/i);
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Approve" }).click();
+  await toast(page, /approved/i);
+  await page.getByRole("button", { name: "Mark as sent" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Mark as sent" }).click();
+  await toast(page, /sent/i);
+
+  // first delivery: 120 m arrive, 10 m water-damaged
+  await page.getByRole("link", { name: "Receive goods" }).click();
+  await page.getByLabel("Received Cotton fabric (FAB-COT)").fill("120");
+  await page.getByLabel("Rejected Cotton fabric (FAB-COT)").fill("10");
+  await page.getByLabel("Supplier delivery note no.").fill("DN-KANO-1");
+  await page.getByRole("button", { name: "Post goods receipt" }).click();
+  await expect(page.getByText(/give a reason for the rejected quantity/)).toBeVisible(); // rejected goods need a reason
+  await page.getByLabel("Rejection reason Cotton fabric (FAB-COT)").fill("Water damaged");
+  await page.getByRole("button", { name: "Post goods receipt" }).click();
+  await page.waitForURL(/\/commerce\/(purchase-orders|goods-received)\/[0-9a-f-]{36}$/);
+  await page.goto(poUrl);
+  await expect(page.getByText("Partially received").first()).toBeVisible();
+
+  // second delivery: the remaining 90 m
+  await page.getByRole("link", { name: "Receive goods" }).click();
+  await expect(page.getByLabel("Received Cotton fabric (FAB-COT)")).toHaveValue("90");
+  await page.getByRole("button", { name: "Post goods receipt" }).click();
+  await page.waitForURL(/\/commerce\/(purchase-orders|goods-received)\/[0-9a-f-]{36}$/);
+  await page.goto(poUrl);
+  await expect(page.getByText("Received", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Discrepancy").first()).toBeVisible();
+
+  // Only accepted goods entered stock: 64 m left after production + 110 + 90 = 264 m
+  await page.goto("/inventory/materials");
+  await page.getByRole("link", { name: "Cotton fabric" }).click();
+  await expect(page.getByText("264 m").first()).toBeVisible();
+  await page.goto("/commerce/goods-received");
+  await expect(page.locator("tbody tr")).toHaveCount(2);
 });
 
 test("10. security: another organisation can't reach this organisation's records", async ({ browser }) => {

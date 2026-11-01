@@ -4,7 +4,7 @@
 
 ForgeOS is a manufacturing operations platform: production orders, bills of materials, a stock ledger, factory-floor job cards and real-time operational visibility, in one multi-tenant SaaS application.
 
-This repository contains **phase 1: the P0 foundation**. It covers every P0 capability in the build brief, working end to end and tested. P1 and P2 modules (procurement, quality templates, costing, billing, AI Copilot, WhatsApp) are not built yet. See [docs/ROADMAP.md](docs/ROADMAP.md).
+This repository contains **phase 1 (the P0 foundation)** and **phase 2 (procurement, quality control and costing)**, working end to end and tested. Other P1 modules (customer orders, workforce, billing) and P2 (AI Copilot, forecasting, WhatsApp) are not built yet. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What works today
 
@@ -16,12 +16,15 @@ This repository contains **phase 1: the P0 foundation**. It covers every P0 capa
 | Catalogue | Products with variants (size, colour), materials with units, purchase conversion, reorder/min/max levels, preferred supplier; suppliers |
 | BOM | Versioned BOMs, draft → approval → approved/superseded/archived, wastage %, nested BOMs (sub-assemblies), cost estimate per unit, read-only once approved |
 | Inventory | Immutable ledger: opening balances, receipts, transfers, adjustments (count / damage / wastage / found / expired), production issues & returns, finished-goods receipts, reversals. Weighted-average valuation. Available = on hand − reserved. Negative stock blocked unless authorised (audited). Low/out/excess/slow-moving detection. Idempotent submissions |
-| Production | Order numbers, BOM + routing snapshot at creation, 10-status state machine with enforced transitions and history, automatic material reservation and shortage detection on approval, issue/return/wastage, per-step progress with "can't exceed previous step" rule, downtime, notes, job cards with QR printouts, completion that stocks **only accepted units** at **actual material cost per accepted unit**, planned-vs-actual material reconciliation |
+| Production | Order numbers, BOM + routing snapshot at creation, 10-status state machine with enforced transitions and history, automatic material reservation and shortage detection on approval, issue/return/wastage, per-step progress with "can't exceed previous step" rule, downtime, notes, job cards with QR printouts, completion that stocks **only accepted units** at **full actual cost per accepted unit**, planned-vs-actual material reconciliation |
+| Procurement | Purchase requisitions (manual, from reorder suggestions or production shortages) with approval, purchase orders with discounts, VAT, shipping and an auto-approve threshold, printable POs, goods received with partial deliveries, rejected quantities with reasons, over-receipt blocked; only accepted goods enter stock, valued at the net (ex-VAT) price |
+| Quality control | Reusable checklists, production and incoming-goods inspections, pass/fail/conditional (conditional needs a quality approver), defects by category and severity, corrective actions with owners and due dates, defect analytics; **final-inspection gate**: completed units can't exceed units that passed, optionally mandatory |
+| Costing | Labour rate and overhead rates (per hour, per unit, % of material, per order), labour/machine/other cost entries on orders, estimate vs actual per cost type, gross margin, product cost estimates with saved standards; finished goods valued at material + labour + machine + overhead ÷ accepted units, frozen in a cost snapshot |
 | Planning | Kanban board (stages as columns), table and timeline views with filters |
 | Factory floor | Mobile-first "My job cards": start, record output, report defects/shortages, notes, pause, finish. **Offline queue** with pending/synced/error states and idempotent replay. PWA manifest + service worker |
-| Mission Control | KPIs, charts and rule-based alerts (overdue, materials pending, over-consumption vs BOM, idle work centres, rising rejection, low stock), daily production, activity feed |
+| Mission Control | KPIs, charts and rule-based alerts (overdue, materials pending, over-consumption vs BOM, idle work centres, rising rejection, low stock, late supplier deliveries, POs awaiting approval, overdue corrective actions), daily production, activity feed |
 | Notifications | In-app notifications with deep links, read/unread; scheduled overdue checks via cron; email via Resend when configured |
-| Reports & data | Production, efficiency, material consumption, wastage, inventory valuation, stock movements; CSV export (formula-injection safe) and print/PDF; CSV import for materials (with opening balances) and products with column mapping, validation, duplicate detection, preview and all-or-nothing save |
+| Reports & data | Production, efficiency, material consumption, wastage, inventory valuation, stock movements, purchase orders, supplier performance, quality and defects, production cost (estimate vs actual); CSV export (formula-injection safe) and print/PDF; CSV import for materials (with opening balances) and products with column mapping, validation, duplicate detection, preview and all-or-nothing save |
 | Audit | Append-only audit log of master-data changes, adjustments, reversals, role/permission changes, overrides, approvals, completions, with request IDs |
 
 ## Tech stack
@@ -53,7 +56,8 @@ npm run dev                          # http://localhost:3000 → sign up → onb
 npx vitest run tests/unit            # pure helpers
 npx vitest run tests/db              # RLS, tenancy, RBAC, inventory engine, production flow (needs the database)
 npm run build && npm start &         # then:
-npx playwright test                  # browser acceptance tests 1–5 and 10 from the brief
+npx playwright test                  # browser acceptance tests 1–7 and 10 from the brief
+node scripts/check-selects.mjs src "$SERVICE_ROLE_KEY"   # every app query checked against the Data API
 ```
 
 ## Documentation

@@ -14,7 +14,7 @@ export default async function WarehousesPage() {
   const ctx = await requirePermission("warehouses.read");
   const { supabase } = await getSession();
   const [{ data: rows }, { data: balances }, opts] = await Promise.all([
-    supabase.from("warehouses").select("*, factories(name)").eq("organization_id", ctx.org.id).is("deleted_at", null).order("name"),
+    supabase.from("warehouses").select("*, factories!warehouses_factory_id_fkey(name)").eq("organization_id", ctx.org.id).is("deleted_at", null).order("name"),
     ctx.can("inventory.read")
       ? supabase.from("inventory_balances").select("warehouse_id, on_hand, stock_items(average_cost)").eq("organization_id", ctx.org.id).neq("on_hand", 0)
       : Promise.resolve({ data: [] as { warehouse_id: string; on_hand: number; stock_items: unknown }[] }),

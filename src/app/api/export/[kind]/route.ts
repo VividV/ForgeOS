@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ kind
     if (!ctx.can("inventory.export")) return deny();
     let q = supabase
       .from("inventory_transactions")
-      .select("occurred_at, txn_type, quantity, unit_cost, total_cost, balance_after, reason, notes, warehouses(code), stock_item_details:stock_item_id(code, name, uom_code), production_orders(number)")
+      .select("occurred_at, txn_type, quantity, unit_cost, total_cost, balance_after, reason, notes, warehouses(code), stock_item_details(code, name, uom_code), production_orders(number)")
       .eq("organization_id", ctx.org.id)
       .order("occurred_at", { ascending: false })
       .limit(50000);

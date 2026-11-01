@@ -51,8 +51,12 @@ jobs:
             echo "CRON_SECRET=ci-cron-secret-0123456789abcdef"
           } > .env.local
           echo "TEST_DATABASE_URL=$DB_URL" >> $GITHUB_ENV
-      - name: Database tests (RLS, RBAC, inventory, production)
+      - name: Database tests (RLS, RBAC, inventory, production, procurement, quality, costing)
         run: npx vitest run tests/db
+      - name: Check every app query against the Data API
+        run: |
+          source /tmp/sb.env
+          node scripts/check-selects.mjs src "$SERVICE_ROLE_KEY"
       - name: Build
         run: npm run build
       - name: E2E acceptance tests

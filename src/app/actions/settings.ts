@@ -22,14 +22,21 @@ export async function saveOrgDetails(values: Record<string, unknown>): Promise<A
 }
 
 export async function saveConfigurationSettings(values: Record<string, unknown>): Promise<ActionResult> {
-  const p = parseOrFields(configSchema.extend({ timezone: z.string().min(3).max(60) }), values);
+  const p = parseOrFields(
+    configSchema.extend({
+      timezone: z.string().min(3).max(60),
+      require_final_inspection: z.boolean().optional(),
+      po_approval_threshold: z.preprocess((v) => (v === "" || v == null ? 0 : Number(v)), z.number().min(0, "Must be zero or more")),
+    }),
+    values,
+  );
   if (!p.ok) return p.error;
   if (p.data.inventory_valuation === "fifo") return { ok: false, error: "FIFO valuation is not available yet.", fieldErrors: { inventory_valuation: "Not available yet" } };
   const c = await actionContext("settings.manage");
   if ("error" in c) return { ok: false, error: c.error! };
   const { error } = await c.supabase
     .from("organization_settings")
-    .update({ ...p.data, require_production_approval: p.data.require_production_approval ?? false })
+    .update({ ...p.data, require_production_approval: p.data.require_production_approval ?? false, require_final_inspection: p.data.require_final_inspection ?? false })
     .eq("organization_id", c.ctx.org.id);
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/", "layout");

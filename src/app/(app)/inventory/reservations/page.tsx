@@ -14,7 +14,7 @@ export default async function ReservationsPage() {
   const { supabase } = await getSession();
   const { data } = await supabase
     .from("material_reservations")
-    .select("id, quantity, updated_at, warehouses(code), stock_item_details:stock_item_id(name, code, uom_code, material_id), production_orders(id, number, status, due_date), production_order_materials(quantity_required, quantity_issued)")
+    .select("id, quantity, updated_at, warehouses(code), stock_item_details(name, code, uom_code, material_id), production_orders(id, number, status, due_date), production_order_materials(quantity_required, quantity_issued)")
     .eq("organization_id", ctx.org.id)
     .eq("status", "active")
     .gt("quantity", 0)

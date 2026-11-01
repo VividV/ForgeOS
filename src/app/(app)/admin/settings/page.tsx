@@ -31,7 +31,7 @@ export default async function SettingsPage() {
           <Card>
             <CardHeader title="Operating preferences" />
             <CardBody>
-              <PrefsForm defaults={{ ...ctx.settings, fiscal_year_start_month: String(ctx.settings.fiscal_year_start_month) }} editable={manage} />
+              <PrefsForm defaults={{ ...ctx.settings, fiscal_year_start_month: String(ctx.settings.fiscal_year_start_month), po_approval_threshold: String(ctx.settings.po_approval_threshold ?? 0) }} editable={manage} />
             </CardBody>
           </Card>
           <Card>

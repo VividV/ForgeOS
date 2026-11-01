@@ -23,7 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-screen">
         {children}
         <ServiceWorkerRegister />
-        <Toaster position="top-right" richColors closeButton toastOptions={{ className: "text-[13px]" }} />
+        <Toaster position="bottom-right" richColors closeButton toastOptions={{ className: "text-[13px]" }} />
       </body>
     </html>
   );

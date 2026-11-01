@@ -49,9 +49,21 @@ Resend (optional email) · Vercel Cron (scheduled checks)
 2. Approval (`production_order_transition → approved`) calls `production_order_reserve`: reserves `min(outstanding, available)` per line, then moves to `ready_to_start` or `materials_pending` and notifies the store.
 3. `production_issue_materials` consumes reservations first, then available stock; `production_return_materials` returns at issued cost; `production_record_wastage` classifies already-issued material.
 4. Progress is recorded per operation (manager UI or worker job cards). A step can't process more than passed the previous step; finishing the last step moves the order to quality inspection.
-5. `production_order_complete` refuses output that exceeds issued material (unless an approver records an audited exception), posts a finished-goods receipt for **accepted units only**, valued at net issued material cost ÷ accepted units, releases leftover reservations and closes job cards.
+5. `production_order_complete` refuses output that exceeds issued material (unless an approver records an audited exception), enforces the final-inspection gate (accepted ≤ units that passed final inspection; mandatory if `require_final_inspection`), allocates automatic overheads, posts a finished-goods receipt for **accepted units only** valued at (material + labour + machine + overhead + other) ÷ accepted units, writes an immutable `production_cost_snapshots` row, releases leftover reservations and closes job cards.
 
 Allowed transitions: draft→awaiting_approval→approved→(materials_pending|ready_to_start)→in_progress⇄paused, in_progress⇄quality_inspection→completed; any open state→cancelled (requires a reason and that issued material is returned or written off). Starting with shortages requires approve permission and a reason.
+
+## Procurement
+
+Requisitions (`purchase_requisitions`) → approval → purchase orders (`purchase_orders`, line totals as generated columns, header totals recalculated by `app.po_recalc`) → goods receipts. `goods_receipts` and their lines are immutable; each accepted line posts a `goods_receipt` inventory transaction at the net unit price (after discount, excluding VAT), so weighted-average cost reflects what stock actually cost. Rejected quantity is recorded with a reason and never stocked; over-receipt beyond the outstanding quantity is refused. Receipts are idempotent per submission key.
+
+## Quality
+
+`quality_checks` (immutable) record inspected / passed / rejected with an optional checklist (`quality_templates`), defects and corrective actions. Final production inspections are summed in `production_inspection_totals`; completion cannot stock more units than passed.
+
+## Costing
+
+Rates live in `cost_rates` (one default labour rate; overheads applied automatically by basis). Labour and machine time (`labour_cost_entries`) and direct overheads (`overhead_cost_entries`) are recorded against open orders. `production_cost_summary` returns estimate vs actual; completion freezes the actual in `production_cost_snapshots`.
 
 ## Alerts
 

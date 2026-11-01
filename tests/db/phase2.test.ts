@@ -143,6 +143,20 @@ describe("procurement, quality and costing", () => {
     await expectError(one(O.owner.id, "select public.cost_entry_add($1,$2)", [order, { entry_type: "labour", hours: 1 }]), "not yet completed");
   });
 
+  it("surfaces late deliveries and overdue corrective actions as alerts", async () => {
+    const late = (await one<{ id: string }>(O.owner.id, "select public.purchase_order_save($1,null,$2) id", [O.org, {
+      supplier_id: supplier, warehouse_id: O.wh, lines: [{ stock_item_id: fabric.stockItemId, quantity: 5, unit_price: 1000 }] }])).id;
+    await one(O.owner.id, "select public.purchase_order_transition($1,'submit')", [late]);
+    let alerts = await as(O.owner.id, (q) => q<{ kind: string; entity_id: string }>("select kind, entity_id from public.operational_alerts($1)", [O.org]));
+    expect(alerts.some((a) => a.kind === "po_pending_approval" && a.entity_id === late)).toBe(true);
+    await one(O.owner.id, "select public.purchase_order_transition($1,'approve')", [late]);
+    await admin("update purchase_orders set order_date = current_date - 20, expected_date = current_date - 3 where id=$1", [late]);
+    alerts = await as(O.owner.id, (q) => q<{ kind: string; entity_id: string }>("select kind, entity_id from public.operational_alerts($1)", [O.org]));
+    expect(alerts.some((a) => a.kind === "po_overdue" && a.entity_id === late)).toBe(true);
+    // the wrapped phase-1 body is not callable directly by clients
+    await expectError(one(O.owner.id, "select * from app.operational_alerts_core($1)", [O.org]), "permission denied");
+  });
+
   it("isolates phase-2 records between organisations", async () => {
     const B = await setupOrg("PhaseTwoRival");
     expect(await as(B.owner.id, (q) => q("select id from purchase_orders where id=$1", [po]))).toHaveLength(0);

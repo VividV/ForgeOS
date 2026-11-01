@@ -1,7 +1,8 @@
-import { Printer } from "lucide-react";
+import { FilePlus, Printer } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, PriorityBadge, ProductionStatusBadge } from "@/components/ui/badge";
+import { InspectionDialog } from "@/components/quality/inspection-dialog";
+import { Badge, PriorityBadge, ProductionStatusBadge, QcResultBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/card";
 import { EmptyState, PageHeader, Progress, Stat } from "@/components/ui/misc";
@@ -9,6 +10,8 @@ import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
 import { getSession, requirePermission } from "@/lib/auth";
 import { formatDate, formatDateTime, formatMoney, formatQty, relativeTime, todayIn } from "@/lib/format";
 import { lookups } from "@/lib/services/lookups";
+import { inspectionTemplates } from "@/lib/services/quality";
+import { CostEntryButtons, RemoveCostEntry } from "./costing";
 import { CompleteDialog, DowntimeDialog, EditOrderDialog, IssueDialog, JobCardDialog, NoteForm, OperationActions, OrderActions, ReturnDialog, WastageDialog } from "./client";
 
 const LOG_LABEL: Record<string, string> = {
@@ -36,7 +39,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     supabase.from("production_logs").select("*, profiles:created_by(full_name), production_operations(name)").eq("production_order_id", id).order("occurred_at", { ascending: false }).limit(60),
     supabase.from("production_outputs").select("*").eq("production_order_id", id),
     supabase.from("inventory_balances").select("stock_item_id, available").eq("warehouse_id", o.material_warehouse_id),
-    lookups(ctx.org.id, ["members"]),
+    lookups(ctx.org.id, ["members", "workCentres"]),
+  ]);
+  const qRead = ctx.can("quality.read");
+  const costs = ctx.can("costing.read");
+  const [{ data: checks }, { data: qTotals }, templates, { data: costData }] = await Promise.all([
+    qRead
+      ? supabase.from("quality_checks").select("id, number, is_final, result, quantity_inspected, quantity_passed, quantity_rejected, inspected_at, production_operations(name)").eq("production_order_id", id).order("inspected_at", { ascending: false })
+      : Promise.resolve({ data: [] as never[] }),
+    supabase.from("production_inspection_totals").select("inspections, passed, rejected").eq("production_order_id", id).maybeSingle(),
+    ctx.can("quality.create") ? inspectionTemplates(ctx.org.id, "production", (o.products as unknown as { id: string }).id) : Promise.resolve([]),
+    costs ? supabase.rpc("production_cost_summary", { p_order: id }) : Promise.resolve({ data: null }),
   ]);
   const product = o.products as unknown as { id: string; name: string; code: string; units_of_measure: { code: string } };
   const variant = o.product_variants as unknown as { name: string; is_default: boolean } | null;
@@ -44,7 +57,6 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const cur = ctx.settings.currency;
   const df = ctx.settings.date_format;
   const tz = ctx.settings.timezone;
-  const costs = ctx.can("costing.read");
   type Mat = { id: string; line_no: number; stock_item_id: string; code: string; name: string; uom_code: string; quantity_per_unit: number; wastage_pct: number; quantity_required: number; quantity_reserved: number; quantity_issued: number; quantity_returned: number; quantity_wasted: number; quantity_consumed: number; standard_for_actual_output: number; usage_variance: number; estimated_unit_cost: number; actual_cost: number; estimated_cost: number };
   const materials = (mats ?? []) as Mat[];
   const availBy = new Map((avail ?? []).map((a) => [a.stock_item_id, Number(a.available)]));
@@ -73,6 +85,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     : 0;
   const matOpts = materials.map((m) => ({ id: m.id, name: m.name, uom: m.uom_code, reserved: Number(m.quantity_reserved), issued: Number(m.quantity_issued), returned: Number(m.quantity_returned), wasted: Number(m.quantity_wasted), required: Number(m.quantity_required), available: availBy.get(m.stock_item_id) ?? 0 }));
   const opOpts = operations.map((x) => ({ value: x.id, label: `${x.sequence}. ${x.name}` }));
+  const inspection = qTotals && Number(qTotals.inspections) > 0 ? { passed: Number(qTotals.passed), rejected: Number(qTotals.rejected) } : null;
+  type Cost = { material: number; labour: number; labour_hours: number; machine: number; overhead: number; allocated_overhead?: number; other: number; total: number; unit_cost: number | null };
+  type CostSummary = {
+    final: boolean; selling_price: number | null; labour_rate: number | null; quantity_accepted: number;
+    estimate: Cost; actual: Cost;
+    labour_entries: { id: string; type: string; hours: number; rate: number; amount: number; worker: string | null; operation: string | null; work_centre: string | null; date: string; notes: string | null }[];
+    overhead_entries: { id: string; category: string; description: string; amount: number; allocated: boolean }[];
+  };
+  const cs = costData as CostSummary | null;
+  const hasShortage = materials.some((m) => Number(m.quantity_required) - Number(m.quantity_reserved) - Number(m.quantity_issued) > 0.0001);
+  const canCostEdit = ctx.can("costing.manage") && isOpen && !["draft", "awaiting_approval"].includes(o.status);
 
   return (
     <>
@@ -91,7 +114,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <>
             <OrderActions id={o.id} status={o.status} can={can} />
             {isOpen && can.manage && (o.status === "in_progress" || o.status === "quality_inspection") && (
-              <CompleteDialog id={o.id} planned={Number(o.quantity_planned)} lastStepGood={lastGood} lastStepRejected={active.reduce((s, x) => s + Number(x.quantity_rejected), 0)} maxByMaterial={maxByMaterial} canException={can.approve} uom={uom} />
+              <CompleteDialog id={o.id} planned={Number(o.quantity_planned)} lastStepGood={lastGood} lastStepRejected={active.reduce((s, x) => s + Number(x.quantity_rejected), 0)} maxByMaterial={maxByMaterial} canException={can.approve} uom={uom} inspection={inspection} requireFinal={ctx.settings.require_final_inspection} />
             )}
           </>
         }
@@ -116,11 +139,18 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               title="Materials"
               description={`From BOM v${o.bom_version} (snapshot taken ${formatDate(o.created_at, df, tz)}). Taken from ${(o.material_wh as unknown as { name: string }).name}.`}
               action={
-                isOpen && executing && (
+                isOpen && (executing || hasShortage) && (
                   <>
-                    {can.manage && <IssueDialog id={o.id} materials={matOpts} operations={opOpts} />}
-                    {can.manage && <ReturnDialog id={o.id} materials={matOpts} />}
-                    {can.update && <WastageDialog id={o.id} materials={matOpts} operations={opOpts} />}
+                    {hasShortage && ctx.can("requisitions.create") && !["draft", "awaiting_approval"].includes(o.status) && (
+                      <Button asChild size="sm">
+                        <Link href={`/commerce/requisitions/new?order=${o.id}`}>
+                          <FilePlus /> Request materials
+                        </Link>
+                      </Button>
+                    )}
+                    {executing && can.manage && <IssueDialog id={o.id} materials={matOpts} operations={opOpts} />}
+                    {executing && can.manage && <ReturnDialog id={o.id} materials={matOpts} />}
+                    {executing && can.update && <WastageDialog id={o.id} materials={matOpts} operations={opOpts} />}
                   </>
                 )
               }
@@ -251,6 +281,155 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             )}
           </Card>
 
+          {qRead && (
+            <Card role="region" aria-label="Quality">
+              <CardHeader
+                title="Quality"
+                description={
+                  inspection
+                    ? `Final inspection: ${formatQty(inspection.passed)} passed, ${formatQty(inspection.rejected)} rejected. Completion is limited to units that passed.`
+                    : ctx.settings.require_final_inspection
+                      ? "A final inspection is required before output can be stocked."
+                      : "No final inspection yet."
+                }
+                action={
+                  isOpen && executing && ctx.can("quality.create") && (
+                    <InspectionDialog checkType="production" productionOrderId={o.id} operations={opOpts} defaultFinal maxQty={Math.max(lastGood - (inspection ? inspection.passed + inspection.rejected : 0), 0) || undefined} templates={templates} members={opts.members} canApprove={ctx.can("quality.approve")} />
+                  )
+                }
+              />
+              {(checks ?? []).length === 0 ? (
+                <EmptyState title="No inspections recorded" />
+              ) : (
+                <Table>
+                  <TBody>
+                    {(checks ?? []).map((c: { id: string; number: string; is_final: boolean; result: string; quantity_inspected: number; quantity_passed: number; quantity_rejected: number; inspected_at: string; production_operations: unknown }) => (
+                      <TR key={c.id}>
+                        <TD>
+                          <Link href={`/operations/quality/${c.id}`} className="font-medium text-accent-ink hover:underline">
+                            {c.number}
+                          </Link>{" "}
+                          {c.is_final && <Badge>Final</Badge>}
+                        </TD>
+                        <TD className="text-muted">{(c.production_operations as { name: string } | null)?.name ?? "Whole order"}</TD>
+                        <TD className="text-muted">{formatDateTime(c.inspected_at, df, tz)}</TD>
+                        <TD align="right">
+                          {formatQty(c.quantity_passed)} passed · {formatQty(c.quantity_rejected)} rejected
+                        </TD>
+                        <TD>
+                          <QcResultBadge result={c.result} />
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              )}
+            </Card>
+          )}
+
+          {cs && (
+            <Card role="region" aria-label="Costing">
+              <CardHeader
+                title="Costing"
+                description={cs.final ? "Final cost, frozen when the order was completed." : "Estimate from the BOM, routing and default rates, against costs recorded so far."}
+                action={canCostEdit && <CostEntryButtons orderId={o.id} operations={opOpts} workCentres={opts.workCentres} members={opts.members} labourRate={cs.labour_rate} />}
+              />
+              <Table>
+                <THead>
+                  <tr>
+                    <TH>Cost</TH>
+                    <TH align="right">Estimate</TH>
+                    <TH align="right">Actual</TH>
+                    <TH align="right">Variance</TH>
+                  </tr>
+                </THead>
+                <TBody>
+                  {(
+                    [
+                      ["Material", "material"],
+                      ["Labour", "labour"],
+                      ["Machine", "machine"],
+                      ["Overhead", "overhead"],
+                      ["Other direct", "other"],
+                    ] as const
+                  ).map(([label, k]) => {
+                    const v = Number(cs.actual[k]) - Number(cs.estimate[k]);
+                    return (
+                      <TR key={k}>
+                        <TD>
+                          {label}
+                          {k === "labour" && <span className="text-xs text-muted"> · {formatQty(cs.actual.labour_hours)} h actual / {formatQty(cs.estimate.labour_hours)} h est.</span>}
+                          {k === "overhead" && Number(cs.actual.allocated_overhead) > 0 && <span className="text-xs text-muted"> · incl. {formatMoney(cs.actual.allocated_overhead, cur)} allocated</span>}
+                        </TD>
+                        <TD align="right">{formatMoney(cs.estimate[k], cur)}</TD>
+                        <TD align="right">{formatMoney(cs.actual[k], cur)}</TD>
+                        <TD align="right" className={v > 0.005 ? "text-danger-ink" : v < -0.005 ? "text-success" : "text-muted"}>
+                          {v > 0 ? "+" : ""}
+                          {formatMoney(v, cur)}
+                        </TD>
+                      </TR>
+                    );
+                  })}
+                </TBody>
+                <tfoot className="text-[13px]">
+                  <tr className="border-t border-line-strong font-semibold">
+                    <td className="px-3 py-2">Total</td>
+                    <td className="tabular px-3 py-2 text-right">{formatMoney(cs.estimate.total, cur)}</td>
+                    <td className="tabular px-3 py-2 text-right">{formatMoney(cs.actual.total, cur)}</td>
+                    <td className="tabular px-3 py-2 text-right">{formatMoney(Number(cs.actual.total) - Number(cs.estimate.total), cur)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-1 text-muted">Cost per unit</td>
+                    <td className="tabular px-3 py-1 text-right">{formatMoney(cs.estimate.unit_cost, cur)}</td>
+                    <td className="tabular px-3 py-1 text-right">{cs.actual.unit_cost != null ? formatMoney(cs.actual.unit_cost, cur) : "—"}</td>
+                    <td className="px-3 py-1 text-right text-xs text-muted">{cs.actual.unit_cost != null ? (cs.final ? "per accepted unit" : "per unit through last step") : ""}</td>
+                  </tr>
+                  {cs.selling_price != null && Number(cs.selling_price) > 0 && cs.actual.unit_cost != null && (
+                    <tr>
+                      <td className="px-3 py-1 text-muted">Gross margin at {formatMoney(cs.selling_price, cur)}</td>
+                      <td className="tabular px-3 py-1 text-right">{(((Number(cs.selling_price) - Number(cs.estimate.unit_cost)) / Number(cs.selling_price)) * 100).toFixed(1)}%</td>
+                      <td className="tabular px-3 py-1 text-right">{(((Number(cs.selling_price) - Number(cs.actual.unit_cost)) / Number(cs.selling_price)) * 100).toFixed(1)}%</td>
+                      <td />
+                    </tr>
+                  )}
+                </tfoot>
+              </Table>
+              {(cs.labour_entries.length > 0 || cs.overhead_entries.length > 0) && (
+                <div className="border-t border-line">
+                  <p className="px-4 pt-3 text-xs font-semibold uppercase tracking-wide text-muted">Recorded entries</p>
+                  <ul className="divide-y divide-line">
+                    {cs.labour_entries.map((e) => (
+                      <li key={e.id} className="flex items-center gap-3 px-4 py-2 text-[13px]">
+                        <span className="w-16 shrink-0 text-xs text-muted">{e.type === "machine" ? "Machine" : "Labour"}</span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {e.type === "machine" ? e.work_centre : e.worker || "—"}
+                          {e.operation && <span className="text-muted"> · {e.operation}</span>}
+                          <span className="text-muted"> · {formatDate(e.date, df)}</span>
+                        </span>
+                        <span className="tabular text-muted">
+                          {formatQty(e.hours)} h × {formatMoney(e.rate, cur)}
+                        </span>
+                        <span className="tabular w-28 text-right">{formatMoney(e.amount, cur)}</span>
+                        {canCostEdit ? <RemoveCostEntry orderId={o.id} entryId={e.id} kind="labour" /> : <span className="w-7" />}
+                      </li>
+                    ))}
+                    {cs.overhead_entries.map((e) => (
+                      <li key={e.id} className="flex items-center gap-3 px-4 py-2 text-[13px]">
+                        <span className="w-16 shrink-0 text-xs capitalize text-muted">{e.category}</span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {e.description}
+                          {e.allocated && <Badge className="ml-2">Allocated</Badge>}
+                        </span>
+                        <span className="tabular w-28 text-right">{formatMoney(e.amount, cur)}</span>
+                        {canCostEdit && !e.allocated ? <RemoveCostEntry orderId={o.id} entryId={e.id} kind="overhead" /> : <span className="w-7" />}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Card>
+          )}
+
           <Card>
             <CardHeader title="Activity" action={isOpen && can.update && <DowntimeDialog orderId={o.id} operations={opOpts} />} />
             {isOpen && can.update && (
@@ -322,12 +501,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                     ...(costs
                       ? [
                           { label: "Actual material cost", value: formatMoney(output.material_cost, cur) },
-                          { label: "Material cost per accepted unit (actual)", value: formatMoney(output.unit_cost, cur) },
+                          { label: "Full cost per accepted unit", value: formatMoney(output.unit_cost, cur) },
                         ]
                       : []),
                   ]}
                 />
-                {costs && <p className="mt-3 text-xs text-muted">Labour and overhead costing arrive with the costing module. These figures are material cost only.</p>}
+                {costs && <p className="mt-3 text-xs text-muted">Finished goods are valued at full actual cost: material, labour, machine time and overhead, divided by accepted units.</p>}
               </CardBody>
             </Card>
           )}
