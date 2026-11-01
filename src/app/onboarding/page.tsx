@@ -62,7 +62,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           )}
         </div>
       </header>
-      <div className="mx-auto grid max-w-5xl gap-8 px-6 py-10 md:grid-cols-[220px_1fr]">
+      <div className="mx-auto grid max-w-5xl gap-8 px-6 py-10 md:grid-cols-[220px_minmax(0,1fr)]">
         <ol className="flex flex-row gap-3 overflow-x-auto md:flex-col md:gap-1" aria-label="Setup steps">
           {STEPS.map((s, i) => {
             const done = state[s.key] || i < idx;

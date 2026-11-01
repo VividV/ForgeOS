@@ -8,7 +8,7 @@ export const positive = (msg = "Must be greater than zero") => z.preprocess(toNu
 export const nonNegative = (msg = "Must be zero or more") => z.preprocess(toNum, z.number({ error: msg }).min(0, msg));
 export const optNonNegative = z.preprocess(toNum, z.number().min(0, "Must be zero or more").optional());
 export const optPositive = z.preprocess(toNum, z.number().positive("Must be greater than zero").optional());
-export const pct = z.preprocess(toNum, z.number().min(0, "0–99.9").max(99.9, "0–99.9").default(0));
+export const pct = z.preprocess((v) => toNum(v) ?? 0, z.number().min(0, "0–99.9").max(99.9, "0–99.9"));
 
 export const code = (label = "Code") =>
   z
@@ -18,11 +18,17 @@ export const code = (label = "Code") =>
     .regex(/^[A-Z0-9][A-Z0-9_./-]{0,31}$/, `${label}: letters, numbers, - _ . / only`);
 export const shortCode = z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{0,19}$/, "Letters, numbers, - and _ only (max 20)");
 
-export const optText = (max = 500) => z.string().trim().max(max).optional().or(z.literal("")).transform((v) => (v ? v : null));
+export const optText = (max = 500) =>
+  z
+    .string()
+    .trim()
+    .max(max, `At most ${max} characters`)
+    .nullish()
+    .transform((v) => (v ? v : null));
 export const reqText = (label: string, max = 160) => z.string().trim().min(1, `Enter ${label}`).max(max);
 export const uuid = (msg = "Choose an option") => z.uuid(msg);
 export const optUuid = z.union([z.uuid(), z.literal(""), z.null()]).optional().transform((v) => (v ? v : null));
-export const optDate = z.union([z.iso.date("Enter a valid date"), z.literal("")]).optional().transform((v) => (v ? v : null));
+export const optDate = z.union([z.iso.date("Enter a valid date"), z.literal("")]).nullish().transform((v) => (v ? v : null));
 export const bool = z.preprocess((v) => v === true || v === "true" || v === "on", z.boolean());
 
 export type ParseResult<T> =

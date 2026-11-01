@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
+import { ServiceWorkerRegister } from "@/components/shell/sw-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en-GB">
       <body className="min-h-screen">
         {children}
+        <ServiceWorkerRegister />
         <Toaster position="top-right" richColors closeButton toastOptions={{ className: "text-[13px]" }} />
       </body>
     </html>

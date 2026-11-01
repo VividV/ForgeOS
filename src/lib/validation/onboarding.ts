@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const opt = (max = 200) => z.string().trim().max(max).optional().or(z.literal(""));
+const opt = (max = 200) => z.string().trim().max(max).nullish();
 const optNum = z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : Number(v)), z.number().min(0).max(1_000_000).optional());
 
 export const COUNTRIES = [

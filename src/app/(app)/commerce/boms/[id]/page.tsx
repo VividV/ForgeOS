@@ -47,7 +47,7 @@ export default async function BomPage({ params }: { params: Promise<{ id: string
         description={`Quantities are per ${formatQty(b.output_quantity)} ${product.units_of_measure.code} of output${(b.product_variants as unknown as { name: string } | null) ? ` · ${(b.product_variants as unknown as { name: string }).name} only` : ""}.`}
         actions={<BomActions bomId={b.id} productId={product.id} status={b.status} can={{ update: ctx.can("bom.update"), approve: ctx.can("bom.approve"), create: ctx.can("bom.create") }} lineCount={rows.length} />}
       />
-      <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card>
           <CardHeader title="Materials" description="Gross quantity includes the expected wastage allowance." />
           {rows.length === 0 ? (

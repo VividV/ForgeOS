@@ -46,7 +46,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         breadcrumb={[{ label: "Products", href: "/commerce/products" }, { label: p.code }]}
         actions={ctx.can("products.delete") && <ArchiveProduct id={p.id} />}
       />
-      <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader title="Bills of materials" description="Only one version is approved at a time. Production orders keep a snapshot of the version they used." action={ctx.can("bom.create") && <NewBomButton productId={p.id} approvedId={(boms ?? []).find((b) => b.status === "approved")?.id ?? null} />} />

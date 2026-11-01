@@ -121,9 +121,9 @@ export function RoutingEditor({
       <FormError message={error} />
       <ol className="flex flex-col gap-2">
         {steps.map((s, i) => (
-          <li key={i} className="grid grid-cols-[28px_1fr] gap-2 rounded-lg border border-line p-3">
+          <li key={i} className="grid grid-cols-[28px_minmax(0,1fr)] gap-2 rounded-lg border border-line p-3">
             <span className="tabular mt-2 text-center text-xs font-semibold text-muted">{i + 1}</span>
-            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_1fr_1fr_auto]">
               <Input aria-label="Step name" value={s.name} disabled={!editable} onChange={(e) => set(i, { name: e.target.value })} />
               <Select aria-label="Stage" value={s.stage_id} disabled={!editable} onChange={(e) => set(i, { stage_id: e.target.value })}>
                 {stages.map((o) => (

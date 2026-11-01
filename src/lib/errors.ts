@@ -35,7 +35,7 @@ export function friendlyError(err: DbError | null | undefined): string {
     case "PGRST116":
       return "Record not found.";
     default:
-      if (process.env.NODE_ENV !== "production") console.error("[db]", err);
+      console.error("[db] unexpected error", { code: err.code, message: err.message, details: err.details, hint: err.hint });
       return "Something went wrong. Please try again, and contact support if it continues.";
   }
 }

@@ -28,7 +28,7 @@ export default async function StagesPage({ searchParams }: { searchParams: Promi
         description="Stages are the columns on your production board. A routing is the ordered list of steps a production order follows. Each order keeps a copy of the routing it was created with."
         actions={manage && <StageDialog nextSequence={((stages ?? []).at(-1)?.sequence ?? 0) + 10} />}
       />
-      <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
         <Card>
           <CardHeader title="Stages" description="Shared by all factories" />
           <Table>

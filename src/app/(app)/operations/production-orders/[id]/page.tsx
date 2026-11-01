@@ -109,7 +109,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader

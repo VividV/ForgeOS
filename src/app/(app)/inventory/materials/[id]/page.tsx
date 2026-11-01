@@ -77,7 +77,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
           {costs ? <Stat label="Stock value" value={formatMoney(si.stock_value, cur)} hint={`Avg cost ${formatMoney(si.average_cost, cur)} / ${uom}`} /> : <Stat label="Warehouses holding stock" value={(balances ?? []).filter((b) => Number(b.on_hand) !== 0).length} />}
         </div>
       )}
-      <div className="grid gap-4 xl:grid-cols-[1fr_440px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
         <div className="flex flex-col gap-4">
           {inv && (
             <Card>

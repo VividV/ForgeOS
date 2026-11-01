@@ -119,7 +119,7 @@ export function BomLineAdd({ bomId, options }: { bomId: string; options: { value
   return (
     <form ref={formRef} action={submit} className="flex flex-col gap-2">
       <p className="text-[13px] font-medium">Add a material</p>
-      <div className="grid gap-2 sm:grid-cols-[1fr_120px_110px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_110px_auto]">
         <Select name="stock_item_id" required defaultValue="" aria-label="Material">
           <option value="" disabled>
             Choose material…

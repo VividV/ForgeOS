@@ -55,7 +55,8 @@ export function SchemaForm({
   const router = useRouter();
   const [formError, setFormError] = React.useState<string | null>(null);
   const form = useForm<Values>({
-    resolver: zodResolver(schema as never) as unknown as Resolver<Values>,
+    // raw: validate on the client but submit the untransformed values; the server parses again.
+    resolver: zodResolver(schema as never, undefined, { raw: true }) as unknown as Resolver<Values>,
     defaultValues: Object.fromEntries(fields.map((f) => [f.name, defaultValues[f.name] ?? (f.type === "checkbox" ? false : "")])),
   });
   const {

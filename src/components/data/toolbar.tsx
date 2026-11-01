@@ -9,7 +9,9 @@ export function ListToolbar({
   placeholder = "Search…",
   filters = [],
   children,
+  search = true,
 }: {
+  search?: boolean;
   placeholder?: string;
   filters?: { name: string; label: string; options: { value: string; label: string }[] }[];
   children?: React.ReactNode;
@@ -42,7 +44,7 @@ export function ListToolbar({
 
   return (
     <div className="flex flex-col gap-2 border-b border-line p-3 sm:flex-row sm:items-center">
-      <div className="relative flex-1 sm:max-w-xs">
+      {search && <div className="relative flex-1 sm:max-w-xs">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
         <input
           type="search"
@@ -57,7 +59,7 @@ export function ListToolbar({
             <X className="size-3.5" />
           </button>
         )}
-      </div>
+      </div>}
       {filters.map((f) => (
         <Select key={f.name} aria-label={f.label} value={sp.get(f.name) ?? ""} onChange={(e) => push({ [f.name]: e.target.value })} className="h-8 text-[13px] sm:w-44">
           <option value="">{f.label}: all</option>
