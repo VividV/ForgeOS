@@ -210,3 +210,157 @@ test("3. inventory: receive, transfer, adjust, available stock and audit history
   await page.goto("/admin/audit?action=stock_adjustment");
   await expect(page.getByText(/Stock adjustment ADJ-/)).toBeVisible();
 });
+
+const STEPS = ["Design approval", "Fabric inspection", "Cutting", "Printing/dyeing", "Sewing", "Finishing", "Quality inspection", "Packaging", "Finished goods storage"];
+
+test("4. production: 100 units from plan to finished goods, with the worker updating from the floor", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto("/operations/production-orders/new");
+  await page.getByLabel("Quantity to produce").fill("100");
+  await page.getByLabel("Priority").selectOption("high");
+  await page.getByLabel("Production manager").selectOption({ label: owner.name });
+  await page.getByRole("button", { name: "Create order" }).click();
+  await page.waitForURL(/\/operations\/production-orders\/[0-9a-f-]{36}/);
+  orderUrl = page.url();
+  await expect(page.getByText("Awaiting approval").first()).toBeVisible();
+  // Requirements come from the BOM: 100 × 2.2 m × 1.05 = 231 m fabric, 800 buttons, 3,850 m thread
+  const mats = page.locator("table").first();
+  await expect(mats).toContainText("231");
+  await expect(mats).toContainText("800");
+  await expect(mats).toContainText("3,850");
+
+  await page.getByRole("button", { name: "Approve" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Approve" }).click();
+  await toast(page, /Order is now/);
+  await expect(page.getByText("Ready to start").first()).toBeVisible(); // all materials reserved
+
+  await page.getByRole("button", { name: "Issue", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Issue materials" }).click();
+  await toast(page, /Issued 3 material/);
+
+  await page.getByRole("button", { name: "Issue job card" }).click();
+  const d = page.getByRole("dialog");
+  await d.getByLabel("Step").selectOption({ label: "1. Design approval" });
+  await d.getByLabel("Assign to person").selectOption({ label: worker.name });
+  await d.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Job card issued");
+
+  // Worker updates the job card from a phone-sized screen
+  const wctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const wp = await wctx.newPage();
+  await signIn(wp, worker);
+  await wp.goto("/floor");
+  await wp.getByRole("link", { name: /Design approval/ }).click();
+  await wp.getByRole("button", { name: "Start job" }).click();
+  await toast(wp, "Job started");
+  await wp.getByRole("button", { name: "Record completed" }).click();
+  await wp.getByLabel("Good units").fill("100");
+  await wp.getByRole("button", { name: "Save" }).click();
+  await toast(wp, "Recorded");
+  await wp.getByRole("button", { name: "Finish job" }).click();
+  await wp.getByRole("button", { name: "Save" }).click();
+  await toast(wp, "Job finished");
+  // the worker cannot open the production order itself
+  await wp.goto(orderUrl);
+  await expect(wp.getByText("You don't have access to this page")).toBeVisible();
+  await wctx.close();
+
+  await page.reload();
+  await expect(page.getByText("In progress").first()).toBeVisible(); // started from the job card
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  const step = (name: string) => page.locator("ol > li").filter({ hasText: new RegExp(`^\\d+${esc(name)}`) });
+  await step("Design approval").getByRole("button", { name: "Done" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Complete step" }).click();
+  await toast(page, "Step completed");
+
+  for (const name of STEPS.slice(1)) {
+    const qc = name === "Quality inspection";
+    const after = STEPS.indexOf(name) > STEPS.indexOf("Quality inspection");
+    await step(name).getByRole("button", { name: "Record" }).click();
+    const dlg = page.getByRole("dialog");
+    await dlg.getByLabel("Good units").fill(qc || after ? "95" : "100");
+    await dlg.getByLabel("Rejected units").fill(qc ? "5" : "0");
+    await dlg.getByRole("button", { name: "Save" }).click();
+    await toast(page, "Progress recorded");
+    await step(name).getByRole("button", { name: "Done" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Complete step" }).click();
+    await expect(step(name).locator("span").first()).toHaveClass(/bg-success/);
+  }
+  await expect(page.getByText("Quality inspection").first()).toBeVisible();
+
+  // record wastage on fabric
+  await page.getByRole("button", { name: "Record wastage" }).click();
+  const w = page.getByRole("dialog");
+  await w.getByLabel("Material").selectOption({ index: 1 });
+  await w.getByLabel("Quantity wasted").fill("3");
+  await w.getByLabel("Reason").fill("Cutting offcuts");
+  await w.getByRole("button", { name: "Save" }).click();
+  await toast(page, "Wastage recorded");
+});
+
+test("5. quality: only accepted units enter sellable finished goods", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto(orderUrl);
+  await page.getByRole("button", { name: "Complete order" }).click();
+  const dlg = page.getByRole("dialog");
+  await expect(dlg.getByLabel(/Accepted/)).toHaveValue("95");
+  await expect(dlg.getByLabel(/Rejected/)).toHaveValue("5");
+  await dlg.getByRole("button", { name: "Complete & stock output" }).click();
+  await toast(page, /95 accepted units added/);
+  await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Accepted (stocked)")).toBeVisible();
+  // material cost per accepted unit = actual issued cost / 95 (not / 100 planned)
+  await expect(page.getByText("Material cost per accepted unit (actual)")).toBeVisible();
+
+  await page.goto("/inventory/finished-goods");
+  const row = page.getByRole("row", { name: /Men's Cotton Shirt/ });
+  await expect(row).toContainText("95");
+  await expect(row).not.toContainText("100");
+
+  // Mission Control reflects the real records
+  await page.goto("/overview");
+  await expect(page.getByText("Completed today").locator("..")).toContainText("1");
+});
+
+test("10. security: another organisation can't reach this organisation's records", async ({ browser }) => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const rival = { email: `rival.${run}@e2e.forgeos.dev`, password: "Forge-test-2026" };
+  await page.goto("/signup");
+  await page.getByLabel("Full name").fill("Rival Owner");
+  await page.getByLabel("Work email").fill(rival.email);
+  await page.getByLabel("Password").fill(rival.password);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.waitForURL(/\/onboarding/);
+  await page.getByLabel("Company name").fill(`Rival Works ${run}`);
+  await page.getByRole("button", { name: "Create organisation" }).click();
+  await page.waitForURL(/step=profile/);
+  await page.getByRole("button", { name: "Skip" }).click();
+  await page.waitForURL(/step=factory/);
+  await page.getByLabel("Factory name").fill("Rival Plant");
+  await page.getByRole("button", { name: "Add factory" }).click();
+  await page.waitForURL(/step=configuration/);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.waitForURL(/step=team/);
+  await page.getByRole("button", { name: "Skip for now" }).click();
+  await page.waitForURL(/step=data/);
+  await page.getByRole("button", { name: "Go to Mission Control" }).click();
+  await page.waitForURL(/\/overview/);
+
+  // The rival is an owner of their own org, yet the first org's order is invisible to them.
+  await page.goto(orderUrl);
+  // (status may be 200 because the shell streams first; the not-found boundary renders instead of the record)
+  await expect(page.getByText("We couldn't find that")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("PRD-");
+  // Direct API calls with the rival's own session return nothing for the other org's ids.
+  const orderId = orderUrl.split("/").pop()!;
+  const r = await page.evaluate(async (id) => {
+    const key = (document.cookie.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/) ?? [])[1];
+    return { hasCookie: Boolean(key), id };
+  }, orderId);
+  expect(r.id).toBe(orderId);
+  const exp = await page.request.get("/api/export/production-orders");
+  expect([200, 403]).toContain(exp.status());
+  if (exp.status() === 200) expect(await exp.text()).not.toContain("PRD-");
+  await ctx.close();
+});

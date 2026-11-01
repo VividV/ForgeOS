@@ -22,6 +22,7 @@ JWT_SECRET="${LOCAL_JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characte
 PGPORT=54322
 mkdir -p "$RUN"
 
+export PGOPTIONS="--client-min-messages=warning"
 psqlc() { psql -h 127.0.0.1 -p $PGPORT -U postgres -v ON_ERROR_STOP=1 -q "$@"; }
 
 # 1. PostgreSQL
@@ -39,6 +40,7 @@ psqlc -f "$ROOT/supabase/local/bootstrap.sql"
 
 # 2. Supabase Auth (runs its own migrations into the auth schema)
 pkill -f "$GOTRUE_BIN serve" 2>/dev/null || true
+for _ in $(seq 1 20); do (exec 3<>/dev/tcp/127.0.0.1/9999) 2>/dev/null || break; sleep 0.5; done
 (
   cd "$(dirname "$GOTRUE_BIN")"
   export GOTRUE_API_HOST=127.0.0.1 PORT=9999 \
@@ -75,6 +77,7 @@ psqlc -c "revoke all on public._local_migrations from anon, authenticated"
 
 # 4. PostgREST
 pkill -f "$POSTGREST_BIN" 2>/dev/null || true
+for _ in $(seq 1 20); do (exec 3<>/dev/tcp/127.0.0.1/3001) 2>/dev/null || break; sleep 0.5; done
 cat > "$RUN/postgrest.conf" <<EOF
 db-uri = "postgres://authenticator:postgres@127.0.0.1:$PGPORT/postgres"
 db-schemas = "public"
@@ -88,7 +91,10 @@ nohup "$POSTGREST_BIN" "$RUN/postgrest.conf" > "$RUN/postgrest.log" 2>&1 &
 
 # 5. Gateway
 pkill -f "local-stack/gateway" 2>/dev/null || true
+for _ in $(seq 1 20); do (exec 3<>/dev/tcp/127.0.0.1/54321) 2>/dev/null || break; sleep 0.5; done
 LOCAL_JWT_SECRET="$JWT_SECRET" nohup node "$ROOT/scripts/local-stack/gateway.mjs" > "$RUN/gateway.log" 2>&1 &
+for _ in $(seq 1 40); do curl -sf http://127.0.0.1:3001/ >/dev/null 2>&1 && break; sleep 0.5; done
+curl -sf http://127.0.0.1:3001/ >/dev/null || { echo "PostgREST failed to start"; tail -5 "$RUN/postgrest.log"; exit 1; }
 for _ in $(seq 1 40); do curl -sf http://127.0.0.1:54321/health >/dev/null && break; sleep 0.5; done
 echo "Local stack ready at http://127.0.0.1:54321"
 node "$ROOT/scripts/local-stack/keys.mjs"

@@ -4,7 +4,7 @@ import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/car
 import { EmptyState, PageHeader } from "@/components/ui/misc";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
 import { getSession, requirePermission } from "@/lib/auth";
-import { formatDateTime, formatMoney, formatQty } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, formatQty } from "@/lib/format";
 import { BomActions, BomHeaderForm, BomLineAdd, BomLineRow } from "./client";
 
 export default async function BomPage({ params }: { params: Promise<{ id: string }> }) {
@@ -136,7 +136,7 @@ export default async function BomPage({ params }: { params: Promise<{ id: string
                   items={[
                     { label: "Name", value: b.name },
                     { label: "Output quantity", value: formatQty(b.output_quantity) },
-                    { label: "Effective from", value: b.effective_from },
+                    { label: "Effective from", value: formatDate(b.effective_from, ctx.settings.date_format) },
                     { label: "Submitted by", value: b.submitted_by ? `${name(b.submitted_by)} · ${formatDateTime(b.submitted_at, ctx.settings.date_format, ctx.settings.timezone)}` : "—" },
                     { label: "Approved by", value: b.approved_by ? `${name(b.approved_by)} · ${formatDateTime(b.approved_at, ctx.settings.date_format, ctx.settings.timezone)}` : "—" },
                     { label: "Notes", value: b.notes },
