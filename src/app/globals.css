@@ -1,26 +1,77 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ForgeOS design tokens. Change values here to re-theme the product. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-canvas: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-subtle: #f1f2f5;
+  --color-ink: #20252b;
+  --color-ink-soft: #3a414a;
+  --color-muted: #646c78; /* slightly darker than #717985 for AA contrast on white */
+  --color-faint: #9aa1ab;
+  --color-line: #e5e7eb;
+  --color-line-strong: #d4d7dd;
+
+  --color-sidebar: #1b1f24;
+  --color-sidebar-hover: #262b31;
+  --color-sidebar-active: #2e343b;
+  --color-sidebar-text: #c8ccd2;
+  --color-sidebar-muted: #8a919b;
+
+  --color-accent: #e87532;
+  --color-accent-hover: #d4652a;
+  --color-accent-soft: #fdf0e8;
+  --color-accent-ink: #a8481a;
+
+  --color-success: #198754;
+  --color-success-soft: #e7f4ed;
+  --color-warning: #d99a24;
+  --color-warning-soft: #fcf4e3;
+  --color-warning-ink: #8a5d0a;
+  --color-danger: #dc3545;
+  --color-danger-soft: #fcebed;
+  --color-danger-ink: #a71d2a;
+  --color-info: #2f6fd6;
+  --color-info-soft: #e9f0fc;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04);
+  --shadow-pop: 0 8px 24px rgb(16 24 40 / 0.12), 0 2px 6px rgb(16 24 40 / 0.06);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
 }
