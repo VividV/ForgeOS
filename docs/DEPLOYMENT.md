@@ -19,8 +19,8 @@ Use separate Supabase projects for staging and production. Never point staging a
 - [ ] Verify: `select count(*) from pg_tables where schemaname='public' and not rowsecurity;` returns **0**.
 - [ ] Auth → Providers → Email: **Confirm email ON**, secure password change ON, minimum password length ≥ 10.
 - [ ] Auth → URL configuration: Site URL = production URL; redirect URLs include `https://<domain>/auth/confirm` and `/auth/callback`.
-- [ ] Auth → Email templates: confirmation and recovery links must use the token-hash flow: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` (recovery: `type=recovery`).
-- [ ] Auth → SMTP: configure a custom SMTP sender (e.g. Resend SMTP) so auth emails don't hit Supabase's built-in rate limit.
+- [ ] Auth → Email templates: the default templates work (the confirmation link must be opened in the browser used to sign up). Once custom SMTP is set up (Supabase only allows template editing with custom SMTP on new free projects), switch confirmation and recovery links to the token-hash flow so they work in any browser: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` (recovery: `type=recovery`).
+- [ ] Auth → SMTP: configure a custom SMTP sender (e.g. Resend or Brevo). Without it, Supabase only sends auth emails to members of your Supabase organisation, at about 2 per hour, so nobody else can confirm a sign-up.
 - [ ] Auth → Rate limits: review sign-in/sign-up/email limits.
 - [ ] (Optional) Google provider: client ID/secret, then set `GOOGLE_AUTH_ENABLED=true`.
 - [ ] Database → Backups: enable daily backups; on Pro, enable **Point-in-Time Recovery** for production.

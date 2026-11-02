@@ -6,7 +6,7 @@ import { GoogleButton, LoginForm } from "./forms";
 
 export const metadata = { title: "Sign in" };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; notice?: string }> }) {
   const sp = await searchParams;
   const { user } = await getSession();
   if (user) redirect(sp.next && sp.next.startsWith("/") && !sp.next.startsWith("//") ? sp.next : "/");
@@ -20,6 +20,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </Link>
       </p>
       {sp.error && <p className="mt-4 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">{sp.error}</p>}
+      {sp.notice && <p className="mt-4 rounded-md bg-success-soft px-3 py-2 text-sm text-success">{sp.notice}</p>}
       <div className="mt-6">
         <LoginForm next={sp.next} />
       </div>
