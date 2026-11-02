@@ -659,6 +659,23 @@ test("P1 billing and demo: trial and plans visible, payments degrade safely, dem
   await expect(page.getByRole("link", { name: "Eko Boutique" })).toBeVisible();
 });
 
+test("P1 intelligence: insights and forecasts work without AI, copilot says plainly when AI is off", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto("/intelligence/insights");
+  await expect(page.getByRole("heading", { name: "Anomalies" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Production flow" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Product demand · next 4 weeks/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Materials to order" })).toBeVisible();
+  await page.goto("/intelligence/insights?weeks=8");
+  await expect(page.getByRole("heading", { name: /Product demand · next 8 weeks/ })).toBeVisible();
+  await page.goto("/intelligence/copilot");
+  await expect(page.getByText(/The AI copilot isn.t switched on yet/)).toBeVisible();
+  const r = await page.request.post("/api/copilot", { data: { messages: [{ role: "user", content: "hi" }] } });
+  expect(r.status()).toBe(503);
+  await page.goto("/account");
+  await expect(page.getByText(/WhatsApp/).first()).toBeVisible();
+});
+
 test("10. security: another organisation can't reach this organisation's records", async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();

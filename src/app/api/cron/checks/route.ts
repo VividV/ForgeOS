@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { serverEnv } from "@/lib/server-env";
+import { flushWhatsAppOutbox, sendDailySummaries } from "@/lib/whatsapp";
 
 /**
  * Scheduled operational checks (overdue orders → notifications).
@@ -22,5 +23,7 @@ export async function GET(req: NextRequest) {
     console.error("[cron] run_scheduled_checks failed", error);
     return NextResponse.json({ error: "Checks failed" }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, result: data });
+  const summaries = await sendDailySummaries().catch((e) => (console.error("[cron] whatsapp summaries", e), 0));
+  const whatsapp = await flushWhatsAppOutbox(200).catch((e) => (console.error("[cron] whatsapp flush", e), { sent: 0, failed: 0 }));
+  return NextResponse.json({ ok: true, result: data, whatsapp: { ...whatsapp, summaries } });
 }

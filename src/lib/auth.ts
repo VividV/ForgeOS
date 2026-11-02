@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export type Permission = string;
@@ -110,6 +111,8 @@ export async function actionContext(...anyOf: Permission[]) {
   const c = await billingFreeActionContext(...anyOf);
   if ("error" in c) return c;
   if (c.ctx.org.status === "suspended") return { error: "This organisation is suspended. Contact ForgeOS support." as const };
+  // deliver any WhatsApp alerts this change raises, after the response is sent
+  if (process.env.WHATSAPP_TOKEN) after(() => import("@/lib/whatsapp").then((w) => w.flushWhatsAppOutbox()).catch(() => undefined));
   if (c.ctx.billing?.locked)
     return { error: (c.ctx.can("billing.manage") ? "Your subscription has ended. Choose a plan under Billing to keep making changes." : "This organisation's subscription has ended. Ask the owner to renew it under Billing.") as "Your subscription has ended." };
   return c;

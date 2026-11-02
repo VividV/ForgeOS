@@ -67,7 +67,11 @@ export const NAV: NavGroup[] = [
   },
   {
     label: "Intelligence",
-    items: [{ href: "/intelligence/reports", label: "Operational Reports", icon: "file-bar-chart", anyOf: ["reports.read"] }],
+    items: [
+      { href: "/intelligence/copilot", label: "AI Copilot", icon: "sparkles", anyOf: ["ai.use"] },
+      { href: "/intelligence/insights", label: "Insights & Forecasts", icon: "trending-up", anyOf: ["dashboard.read", "production_orders.read", "inventory.read"] },
+      { href: "/intelligence/reports", label: "Operational Reports", icon: "file-bar-chart", anyOf: ["reports.read"] },
+    ],
   },
   {
     label: "Administration",

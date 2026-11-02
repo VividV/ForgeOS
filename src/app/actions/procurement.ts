@@ -13,7 +13,7 @@ const touch = () => {
 };
 
 const reqSchema = z.object({
-  source: z.enum(["manual", "reorder", "production_shortage"]).default("manual"),
+  source: z.enum(["manual", "reorder", "production_shortage", "ai"]).default("manual"),
   production_order_id: optUuid,
   warehouse_id: optUuid,
   needed_by: optDate,
