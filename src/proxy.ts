@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/invite", "/api/cron", "/offline", "/manifest.webmanifest", "/sw.js"];
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/invite", "/api/cron", "/api/billing/paystack/webhook", "/api/whatsapp/webhook", "/offline", "/manifest.webmanifest", "/sw.js"];
 
 /**
  * Refreshes the Supabase session cookie on every request and performs an

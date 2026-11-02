@@ -76,12 +76,15 @@ export const NAV: NavGroup[] = [
       { href: "/admin/roles", label: "Roles & Permissions", icon: "shield", anyOf: ["roles.read"] },
       { href: "/admin/settings", label: "Organisation Settings", icon: "settings", anyOf: ["settings.read"] },
       { href: "/admin/audit", label: "Audit Logs", icon: "scroll-text", anyOf: ["audit_logs.read"] },
+      { href: "/admin/billing", label: "Billing", icon: "credit-card", anyOf: ["billing.manage"] },
     ],
   },
 ];
 
-export function visibleNav(perms: Set<string>): NavGroup[] {
-  return NAV.map((g) => ({ ...g, items: g.items.filter((i) => i.anyOf.some((p) => perms.has(p))) })).filter((g) => g.items.length > 0);
+export function visibleNav(perms: Set<string>, platformAdmin = false): NavGroup[] {
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => i.anyOf.some((p) => perms.has(p))) })).filter((g) => g.items.length > 0);
+  if (platformAdmin) groups.push({ label: "ForgeOS", items: [{ href: "/platform", label: "Platform admin", icon: "shield", anyOf: [] }] });
+  return groups;
 }
 
 /** Where a user lands after sign-in, based on what they can see. */

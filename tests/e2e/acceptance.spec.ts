@@ -632,6 +632,33 @@ test("P1 operations: customer return with credit, tax invoice, photo upload, bli
   await expect(page.getByText("260 m").first()).toBeVisible();
 });
 
+test("P1 billing and demo: trial and plans visible, payments degrade safely, demo workspace is separate", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto("/admin/billing");
+  await expect(page.getByText("Free trial")).toBeVisible();
+  await expect(page.getByText("Growth").first()).toBeVisible();
+  await expect(page.getByText("₦40,000").first()).toBeVisible();
+  // no Paystack key locally: the app says so and won't pretend to take payment
+  await expect(page.getByText(/Online payments aren.t switched on yet/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose Starter" })).toBeDisabled();
+
+  await page.getByRole("button", { name: new RegExp(company) }).click();
+  await page.getByRole("menuitem", { name: "Try the demo workspace" }).click();
+  await page.waitForURL(/\/overview/);
+  await expect(page.getByText("ForgeOS Manufacturing Demo").first()).toBeVisible();
+  await page.goto("/commerce/customer-orders");
+  await expect(page.getByRole("cell", { name: "Abuja Fashion House" })).toBeVisible();
+  await page.goto("/alerts");
+  await expect(page.getByText(/needs production/).first()).toBeVisible();
+  // back to the real organisation: none of the demo data is there
+  await page.getByRole("button", { name: /ForgeOS Manufacturing Demo/ }).click();
+  await page.getByRole("menuitem", { name: "Leave demo workspace" }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith("/alerts"));
+  await page.goto("/commerce/customers");
+  await expect(page.getByRole("link", { name: "Abuja Fashion House" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Eko Boutique" })).toBeVisible();
+});
+
 test("10. security: another organisation can't reach this organisation's records", async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();

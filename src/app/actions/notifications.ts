@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { actionContext } from "@/lib/auth";
+import { billingFreeActionContext as actionContext } from "@/lib/auth";
 import { friendlyError, type ActionResult } from "@/lib/errors";
 
 export async function markNotificationRead(id: string): Promise<ActionResult> {

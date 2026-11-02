@@ -17,6 +17,9 @@ export default async function SettingsPage() {
     { name: "Email (Resend)", on: integrations.email, note: "Invitations and notification emails. Without it, invite links are shown to copy." },
     { name: "Google sign-in", on: integrations.google, note: "Enable the Google provider in Supabase Auth and set GOOGLE_AUTH_ENABLED=true." },
     { name: "Scheduled checks", on: integrations.serviceRole, note: "Overdue-order notifications run from the cron route using the service role key." },
+    { name: "Payments (Paystack)", on: integrations.paystack, note: "Subscription payments. Set PAYSTACK_SECRET_KEY (and optional PAYSTACK_PLAN_* codes for automatic renewal)." },
+    { name: "AI copilot", on: integrations.ai, note: "Set AI_BASE_URL, AI_API_KEY and AI_MODEL (any OpenAI-compatible provider)." },
+    { name: "WhatsApp", on: integrations.whatsapp, note: "Set WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID from Meta's WhatsApp Cloud API." },
   ];
   return (
     <>

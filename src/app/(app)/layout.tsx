@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/shell/sidebar";
+import { BillingBanner } from "@/components/shell/billing-banner";
 import { Topbar } from "@/components/shell/topbar";
 import { getSession, requireOrg } from "@/lib/auth";
 import { visibleNav } from "@/lib/nav";
@@ -15,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar nav={visibleNav(ctx.permissions)} orgName={ctx.org.name} isDemo={ctx.org.is_demo} />
+      <Sidebar nav={visibleNav(ctx.permissions, ctx.profile.is_platform_admin)} orgName={ctx.org.name} isDemo={ctx.org.is_demo} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           orgs={ctx.orgs}
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           roles={ctx.roles}
           unread={count ?? 0}
         />
+        <BillingBanner billing={ctx.billing} canManage={ctx.can("billing.manage")} isDemo={ctx.org.is_demo} />
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 lg:px-8">{children}</main>
       </div>
     </div>

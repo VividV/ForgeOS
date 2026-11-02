@@ -1,9 +1,10 @@
 "use client";
 import { DropdownMenu } from "radix-ui";
-import { Bell, Building2, Check, ChevronDown, LogOut, Plus, UserRound } from "lucide-react";
+import { Bell, Building2, Check, ChevronDown, LogOut, Plus, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
+import { leaveDemoWorkspace, openDemoWorkspace } from "@/app/actions/demo";
 import { signOut, switchOrganization } from "@/app/actions/session";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,37 @@ export function Topbar({
             <DropdownMenu.Item className={item} onSelect={() => router.push("/onboarding?new=1")}>
               <Plus className="size-3.5" /> New organisation
             </DropdownMenu.Item>
+            {orgs.find((o) => o.id === activeOrgId)?.is_demo ? (
+              <DropdownMenu.Item
+                className={item}
+                onSelect={() =>
+                  startTransition(async () => {
+                    const r = await leaveDemoWorkspace(activeOrgId);
+                    if (r.ok) {
+                      router.push("/");
+                      router.refresh();
+                    }
+                  })
+                }
+              >
+                <LogOut className="size-3.5" /> Leave demo workspace
+              </DropdownMenu.Item>
+            ) : (
+              <DropdownMenu.Item
+                className={item}
+                onSelect={() =>
+                  startTransition(async () => {
+                    const r = await openDemoWorkspace();
+                    if (r.ok) {
+                      router.push("/overview");
+                      router.refresh();
+                    }
+                  })
+                }
+              >
+                <Sparkles className="size-3.5" /> {orgs.some((o) => o.is_demo) ? "Open demo workspace" : "Try the demo workspace"}
+              </DropdownMenu.Item>
+            )}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

@@ -325,6 +325,9 @@ export function DataStep() {
           </button>
         ))}
       </div>
+      <p className="mt-4 text-[13px] text-muted">
+        Want to look around first? The <strong className="font-medium text-ink">demo workspace</strong> is a separate organisation full of sample orders, stock and staff. It never mixes with your real data, and you can open it any time from the organisation menu.
+      </p>
       <div className="mt-6 flex items-center justify-between border-t border-line pt-4">
         <Link href="/onboarding?step=team" className="text-[13px] text-muted hover:text-ink">
           Back
