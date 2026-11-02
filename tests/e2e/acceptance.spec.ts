@@ -254,9 +254,18 @@ test("4. production: 100 units from plan to finished goods, with the worker upda
   await wp.getByRole("button", { name: "Start job" }).click();
   await toast(wp, "Job started");
   await wp.getByRole("button", { name: "Record completed" }).click();
-  await wp.getByLabel("Good units").fill("100");
+  await wp.getByLabel("Good units").fill("40");
   await wp.getByRole("button", { name: "Save" }).click();
   await toast(wp, "Recorded");
+  // the screen shows the saved total once, not the entry added on top of the refreshed total
+  await wp.waitForTimeout(1500);
+  await expect(wp.locator("span.tabular.text-3xl")).toHaveText("40");
+  await wp.getByRole("button", { name: "Record completed" }).click();
+  await wp.getByLabel("Good units").fill("60");
+  await wp.getByRole("button", { name: "Save" }).click();
+  await toast(wp, "Recorded");
+  await wp.waitForTimeout(1500);
+  await expect(wp.locator("span.tabular.text-3xl")).toHaveText("100");
   await wp.getByRole("button", { name: "Finish job" }).click();
   await wp.getByRole("button", { name: "Save" }).click();
   await toast(wp, "Job finished");

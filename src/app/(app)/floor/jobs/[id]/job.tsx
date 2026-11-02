@@ -31,6 +31,13 @@ export function FloorJob({ job }: { job: FloorJobData }) {
   const [pending, start] = React.useTransition();
   // optimistic local tally so offline updates are reflected immediately
   const [extra, setExtra] = React.useState({ good: 0, rejected: 0, status: null as string | null });
+  // fresh figures from the server already include anything that has synced: drop the local tally
+  const serverKey = `${job.quantity_completed}|${job.quantity_rejected}|${job.status}`;
+  const [seenKey, setSeenKey] = React.useState(serverKey);
+  if (seenKey !== serverKey) {
+    setSeenKey(serverKey);
+    setExtra({ good: 0, rejected: 0, status: null });
+  }
 
   const done = Number(job.quantity_completed) + extra.good;
   const rej = Number(job.quantity_rejected) + extra.rejected;
@@ -40,10 +47,12 @@ export function FloorJob({ job }: { job: FloorJobData }) {
   const send = (values: Record<string, unknown>, label: string) =>
     start(async () => {
       const client_ref = idempotencyKey();
-      const apply = () => {
+      // queued = saved on the phone only: count it locally until it syncs. Once the server has it,
+      // the refreshed job already includes it, so only the status is carried over.
+      const apply = (queued: boolean) => {
         setExtra((e) => ({
-          good: e.good + (values.action === "defect" ? 0 : Number(values.good ?? 0)),
-          rejected: e.rejected + Number(values.rejected ?? 0),
+          good: e.good + (queued && values.action !== "defect" ? Number(values.good ?? 0) : 0),
+          rejected: e.rejected + (queued ? Number(values.rejected ?? 0) : 0),
           status: values.action === "complete" ? "completed" : values.action === "pause" ? "paused" : values.action === "start" || values.action === "resume" || values.action === "progress" ? "in_progress" : e.status,
         }));
         setMode(null);
@@ -55,13 +64,13 @@ export function FloorJob({ job }: { job: FloorJobData }) {
         const r = await jobCardAction(job.id, { ...values, client_ref });
         if (!r.ok) return void toast.error(r.error);
         toast.success(label);
-        apply();
+        apply(false);
         router.refresh();
       } catch (e) {
         if (isNetworkError(e)) {
           enqueue({ client_ref, card_id: job.id, card_code: job.code, values });
           toast.message("Saved on this phone. It will sync when you're back online.");
-          apply();
+          apply(true);
         } else {
           toast.error("Couldn't save. Try again.");
         }
