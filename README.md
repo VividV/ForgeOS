@@ -4,7 +4,7 @@
 
 ForgeOS is a manufacturing operations platform: production orders, bills of materials, a stock ledger, factory-floor job cards and real-time operational visibility, in one multi-tenant SaaS application.
 
-This repository contains **phase 1 (the P0 foundation)**, **phase 2 (procurement, quality control and costing)** and **phase 3 (customer orders and workforce)**, working end to end and tested. Billing and P2 (AI Copilot, forecasting, WhatsApp) are not built yet. See [docs/ROADMAP.md](docs/ROADMAP.md).
+This repository contains **phase 1 (the P0 foundation)**, **phase 2 (procurement, quality control and costing)** and **phase 3 (customer orders and workforce)**, **phase 4 (stock counts, returns, credit notes, tax invoices, uploads)**, **phase 5 (billing, plans, platform admin, demo workspace)** and **phase 6 (AI copilot, forecasting, bottlenecks, anomalies, WhatsApp)**, working end to end and tested. Integrations without credentials (Paystack, AI, WhatsApp, Resend) stay switched off and say so. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What works today
 
@@ -27,6 +27,13 @@ This repository contains **phase 1 (the P0 foundation)**, **phase 2 (procurement
 | Mission Control | KPIs, charts and rule-based alerts (overdue, materials pending, over-consumption vs BOM, idle work centres, rising rejection, low stock, late supplier deliveries, POs awaiting approval, overdue corrective actions), daily production, activity feed |
 | Notifications | In-app notifications with deep links, read/unread; scheduled overdue checks via cron; email via Resend when configured |
 | Reports & data | Production, efficiency, material consumption, wastage, inventory valuation, stock movements, purchase orders, supplier performance, quality and defects, production cost (estimate vs actual); CSV export (formula-injection safe) and print/PDF; CSV import for materials (with opening balances) and products with column mapping, validation, duplicate detection, preview and all-or-nothing save |
+| Stock counts | Blind count sheets per warehouse, record → submit → approve; approval posts count adjustments to the ledger |
+| Returns & invoicing | Customer returns back into stock (or written off), credit notes netted from balances, numbered tax invoices with VAT, bank details and footer, void with reason |
+| Files | Photos and PDFs (≤ 4 MB) on inspections, receipts, dispatches, POs, customer orders, production orders, stock counts and job cards; organisation logo on printouts |
+| Billing | 14-day Growth trial, Starter / Growth / Professional / Enterprise plans with user, factory and AI limits, Paystack checkout + signed webhook, payment history, 7-day grace then read-only lock (enforced in the database) |
+| Platform admin & demo | Internal admin for platform staff (organisations, plans, suspend with a note); optional "ForgeOS Manufacturing Demo" sample workspace kept separate from real data |
+| Intelligence | Insights page: demand forecast, materials to order (MRP through the BOM), bottleneck ranking, anomaly checks. AI copilot that answers from live data with the user's own permissions and prepares requisitions / production orders for the user to confirm. Monthly AI allowance per plan |
+| WhatsApp | Opt-in per person: warning and critical alerts, daily summary, and replies (`STATUS PRD-00012`, `JC-… 12 1` to record output) |
 | Audit | Append-only audit log of master-data changes, adjustments, reversals, role/permission changes, overrides, approvals, completions, with request IDs |
 
 ## Tech stack

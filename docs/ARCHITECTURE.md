@@ -77,6 +77,18 @@ Rates live in `cost_rates` (one default labour rate; overheads applied automatic
 
 Critical conditions are detected by deterministic SQL rules (`operational_alerts`, low-stock trigger, `run_scheduled_checks`), never by AI. When the AI Copilot arrives it will explain these alerts, not be responsible for detecting them.
 
+## Billing
+
+`plans` and one `subscriptions` row per organisation (created by trigger: 14-day Growth trial; demo orgs are comped). `billing_state()` gives plan, limits, usage and lock state. Limits are enforced by triggers on invitations and factories, and `app.require_permission` refuses any non-read permission (except `billing.manage`) once the subscription is locked (7 days after the trial or period ends), so the lock holds for direct API calls too. Paystack: the server starts a pending checkout, redirects to hosted checkout, verifies on callback, and also accepts the HMAC-SHA512-signed webhook; `billing_events` makes both idempotent, and `billing_record_payment` is callable only by the service role.
+
+## Intelligence
+
+Deterministic first: `demand_forecast` (8-week weighted average of dispatches + open orders vs free stock and WIP), `material_requirements` (explodes forecast gaps and unreserved open production through BOMs with wastage, nets stock and open POs), `bottleneck_analysis` and `detect_anomalies` are plain SQL with permission checks. The copilot (`src/lib/copilot`) is provider-independent (OpenAI-compatible Chat Completions with tools). Read tools run through the user's own RLS client, so it can never see more than the user; `propose_*` tools only return a proposal card, which the user confirms through the normal server action. Usage is reserved per request against the plan's monthly allowance; prompts and answers aren't stored. Missing credentials → 503 and a plain message; provider failure → 502.
+
+## WhatsApp
+
+`whatsapp_contacts` (opt-in per person and organisation). A trigger on `notifications` queues warning/critical alerts for opted-in recipients in `whatsapp_outbox`; the outbox is flushed after each server action (`after()`) and by the daily cron, with 3 attempts. Inbound messages are verified with `X-Hub-Signature-256` and handled by `whatsapp_handle_message` (service role only), which acts with the linked user's permissions.
+
 ## Offline factory floor
 
 Job-card updates carry a `client_ref`. If a request fails because the device is offline, the update is stored in `localStorage` and replayed when connectivity returns; the database ignores a `client_ref` it has already applied (`production_logs.client_ref` unique), so replays are safe. Rejected replays stay visible as errors; nothing is discarded silently.

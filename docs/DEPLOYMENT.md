@@ -15,7 +15,8 @@ Use separate Supabase projects for staging and production. Never point staging a
 ## 1. Supabase (per environment)
 
 - [ ] Create the project (region close to your users, e.g. `eu-west-2` or `af-south-1` if available on your plan).
-- [ ] `supabase link --project-ref <ref>` then `supabase db push` to apply `supabase/migrations` in order.
+- [ ] `supabase link --project-ref <ref>` then `supabase db push` to apply `supabase/migrations` in order (or paste the combined setup SQL into the SQL Editor).
+- [ ] Make yourself a platform admin (SQL Editor): `update profiles set is_platform_admin = true where email = 'you@example.com';`
 - [ ] Verify: `select count(*) from pg_tables where schemaname='public' and not rowsecurity;` returns **0**.
 - [ ] Auth → Providers → Email: **Confirm email ON**, secure password change ON, minimum password length ≥ 10.
 - [ ] Auth → URL configuration: Site URL = production URL; redirect URLs include `https://<domain>/auth/confirm` and `/auth/callback`.
@@ -30,7 +31,7 @@ Use separate Supabase projects for staging and production. Never point staging a
 
 - [ ] Import the GitHub repo; framework preset Next.js; Node 22.
 - [ ] Set environment variables per environment from [`.env.example`](../.env.example):
-  `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server only), `CRON_SECRET`, optional `RESEND_API_KEY` + `EMAIL_FROM`, `GOOGLE_AUTH_ENABLED`.
+  `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server only), `CRON_SECRET`, optional `RESEND_API_KEY` + `EMAIL_FROM`, `GOOGLE_AUTH_ENABLED`, `PAYSTACK_SECRET_KEY` (+ optional `PAYSTACK_PLAN_*`), `AI_BASE_URL` + `AI_API_KEY` + `AI_MODEL`, `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` + `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET`. All of these are server-only (type Secret); only `NEXT_PUBLIC_*` are Config.
 - [ ] Cron: `vercel.json` schedules `/api/cron/checks` daily at 06:00 UTC; Vercel sends `CRON_SECRET` as a Bearer token. Verify the first run in Vercel → Cron Jobs.
 - [ ] Domain: add your domain, set DNS, confirm HTTPS. Update `NEXT_PUBLIC_APP_URL` and Supabase Site URL.
 - [ ] Firewall/WAF: enable Vercel's bot protection and a rate-limit rule on `/login`, `/signup` and server-action POSTs.
@@ -39,6 +40,12 @@ Use separate Supabase projects for staging and production. Never point staging a
 
 - [ ] Resend: verify the sending domain (SPF/DKIM), create an API key, set `RESEND_API_KEY` and `EMAIL_FROM`.
 - [ ] Without it, invitations show a copyable link and Settings → Integrations shows "Not configured".
+
+## 3b. Payments, AI and WhatsApp (optional)
+
+- [ ] **Paystack**: Settings → API Keys & Webhooks → copy the secret key into `PAYSTACK_SECRET_KEY`; set the webhook URL to `https://<domain>/api/billing/paystack/webhook`. Test with `sk_test_` keys and Paystack's test card before going live.
+- [ ] **AI**: any OpenAI-compatible endpoint (`AI_BASE_URL`, e.g. `https://api.openai.com/v1`), key and model. Settings → Integrations shows whether it's on.
+- [ ] **WhatsApp**: Meta for Developers → WhatsApp → API setup: phone number ID and a permanent token; App settings → Basic → App secret. Webhook callback `https://<domain>/api/whatsapp/webhook`, verify token = `WHATSAPP_VERIFY_TOKEN`, subscribe to `messages`. People opt in from Account → WhatsApp.
 
 ## 4. Monitoring
 

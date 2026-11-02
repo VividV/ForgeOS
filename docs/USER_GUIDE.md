@@ -69,3 +69,23 @@ Open ForgeOS on your phone (add it to your home screen) → **My job cards** →
 ## 11. See how the factory is doing
 
 **Mission Control** shows active and late orders, output, rejection rate, stock value and alerts. **Daily production** shows what happened on any day. **Operational reports** can be exported to CSV or printed to PDF.
+
+## 12. Count stock, handle returns and invoice
+
+- **Inventory → Stock Counts**: start a count for a warehouse, print the blind sheet (quantities hidden), enter what was counted, submit. A manager approves and the differences are posted as count adjustments.
+- **Customer order → Return**: record goods coming back (to stock or written off) and issue a credit note; the customer's balance is reduced.
+- **Customer order → Tax invoice**: issue a numbered invoice for what's been dispatched. Add your tax ID, bank details and invoice footer in Settings → Organisation. Upload your logo there too; it appears on printouts.
+- Attach photos or PDFs (up to 4 MB) to inspections, receipts, dispatches, orders, counts and job cards.
+
+## 13. Your plan
+
+- Every new organisation gets a 14-day Growth trial. **Admin → Billing** shows your plan, limits and days left, and takes payment through Paystack.
+- If a payment lapses you get 7 days' grace; after that the workspace is read-only until you pay. Nothing is deleted.
+- Want to explore first? Use **Try the demo workspace** from the organisation menu. It's a separate sample company; leave it from the same menu.
+
+## 14. Insights, the AI copilot and WhatsApp
+
+- **Insights & Forecasts**: demand for each product over the next weeks, materials to order (through your BOMs, after stock and open purchase orders), where work is piling up, and unusual activity (reject spikes, material over-use, big adjustments, output drops, late suppliers).
+- **AI Copilot**: ask questions in plain language ("what's late this week?", "which materials will run out?"). It sees only what you're allowed to see. When it suggests a requisition or production order, it shows you a card; nothing is created until you press Confirm.
+- **WhatsApp** (Account → WhatsApp): add your number to receive warnings and a daily summary. Reply `HELP`, `STATUS PRD-00012`, or `JC-xxxx 12 1` (12 good, 1 rejected) to update a job card.
+

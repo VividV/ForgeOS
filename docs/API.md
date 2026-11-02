@@ -63,12 +63,24 @@ Called through `supabase.rpc(name, args)` with the user's JWT. Each checks permi
 | `attendance_record(p_org, p jsonb)` | `attendance.record` | Daily register (upsert per employee and day); hours from times or shift, overtime beyond the shift |
 | `attendance_summary(p_org, from, to)` | `workforce.read` / `attendance.record` | Per-employee totals |
 | `product_cost_estimate(product, save)` | `costing.read` (+`costing.manage` to save) | Unit cost from BOM, routing and rates |
+| `stock_count_start / _record / _transition / _sheet` | `inventory.adjust` (approve: `inventory.approve`) | Blind counts; approval posts adjustments |
+| `sales_return_post(so, p)`, `credit_note_issue / _void` | `sales_orders.dispatch` or `.manage` / `sales_orders.manage` | Returns to stock; credits net from balances |
+| `invoice_issue(so, p)`, `invoice_void(inv, reason)` | `sales_orders.create` / `sales_orders.manage` | Numbered tax invoices |
+| `billing_state(org)` | member | Plan, status, limits, usage, days left |
+| `billing_start_checkout(org, plan)` | `billing.manage` | Pending checkout reference for Paystack |
+| `billing_record_payment(...)` | service role only | Called after Paystack verification / webhook; idempotent |
+| `platform_overview()`, `platform_organizations()`, `platform_update_organization(org, p, note)` | `profiles.is_platform_admin` | Internal admin |
+| `create_demo_organization()`, `leave_demo_organization(org)` | any signed-in user / demo owner | Separate sample workspace |
+| `demand_forecast(org, weeks)`, `material_requirements(org, weeks)` | `sales_orders.read` / `inventory.read` | Forecast and MRP |
+| `bottleneck_analysis(org, days)`, `detect_anomalies(org)` | `production_orders.read` / `dashboard.read` | Flow ranking and unusual-activity checks |
+| `ai_reserve_request(org)`, `ai_finish_request(...)` | `ai.use` / service role | Monthly allowance per plan |
+| `whatsapp_handle_message(phone, text)`, `whatsapp_daily_summary(org)` | service role only | Inbound commands and summaries |
 
 Views (RLS via `security_invoker`): `stock_item_details`, `stock_levels`, `production_material_reconciliation`, `goods_receipt_summary`, `production_inspection_totals`, `customer_balances`.
 
 ## 2. Server actions (`src/app/actions/*`)
 
-Thin wrappers used by the UI: they validate input with Zod, call the functions above with the user's session and return `{ ok, data?, message? } | { ok: false, error, fieldErrors? }`. Files: `session`, `onboarding`, `team`, `catalog`, `inventory`, `production`, `imports`, `settings`, `notifications`, `procurement`, `quality`, `costing`, `sales`, `workforce`.
+Thin wrappers used by the UI: they validate input with Zod, call the functions above with the user's session and return `{ ok, data?, message? } | { ok: false, error, fieldErrors? }`. Files: `session`, `onboarding`, `team`, `catalog`, `inventory`, `production`, `imports`, `settings`, `notifications`, `procurement`, `quality`, `costing`, `sales`, `workforce`, `ops`, `billing`, `platform`, `demo`, `whatsapp`.
 
 ## 3. HTTP routes
 
@@ -78,7 +90,12 @@ Thin wrappers used by the UI: they validate input with Zod, call the functions a
 | `GET /api/export/materials` | `materials.export` | Materials with stock |
 | `GET /api/export/movements?type=&warehouse=` | `inventory.export` | Stock ledger |
 | `GET /api/export/production-orders` | `production_orders.export` | Orders |
-| `GET /api/cron/checks` | `Authorization: Bearer $CRON_SECRET` | Scheduled checks (Vercel Cron) |
+| `GET /api/cron/checks` | `Authorization: Bearer $CRON_SECRET` | Scheduled checks, WhatsApp daily summaries and outbox (Vercel Cron) |
+| `GET /api/files/:id` | session + RLS on the attached record | Download an attachment |
+| `POST /api/copilot` | session + `ai.use` | Copilot turn; 503 when AI isn't configured, 429 at the monthly limit |
+| `GET /api/billing/paystack/callback` | session | Verifies the transaction after checkout |
+| `POST /api/billing/paystack/webhook` | `x-paystack-signature` (HMAC-SHA512) | Payment events; idempotent |
+| `GET/POST /api/whatsapp/webhook` | verify token / `X-Hub-Signature-256` | WhatsApp verification and inbound messages |
 | `GET /auth/confirm`, `GET /auth/callback` | — | Email verification / recovery, OAuth callback |
 
 Costs are omitted from exports for users without `costing.read`.

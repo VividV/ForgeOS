@@ -6,12 +6,17 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 
 | Table | Columns | RLS |
 |---|---|---|
+| [`ai_usage`](#ai_usage) | 9 | ✔ |
+| [`attachments`](#attachments) | 11 | ✔ |
 | [`attendance_records`](#attendance_records) | 13 | ✔ |
 | [`audit_logs`](#audit_logs) | 12 | ✔ |
+| [`billing_events`](#billing_events) | 5 | ✔ |
+| [`billing_payments`](#billing_payments) | 12 | ✔ |
 | [`bills_of_materials`](#bills_of_materials) | 19 | ✔ |
 | [`bom_items`](#bom_items) | 9 | ✔ |
 | [`corrective_actions`](#corrective_actions) | 14 | ✔ |
 | [`cost_rates`](#cost_rates) | 12 | ✔ |
+| [`credit_notes`](#credit_notes) | 14 | ✔ |
 | [`customer_payments`](#customer_payments) | 14 | ✔ |
 | [`customers`](#customers) | 20 | ✔ |
 | [`departments`](#departments) | 9 | ✔ |
@@ -27,7 +32,9 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | [`inventory_balances`](#inventory_balances) | 8 | ✔ |
 | [`inventory_transactions`](#inventory_transactions) | 22 | ✔ |
 | [`invitations`](#invitations) | 13 | ✔ |
-| [`job_cards`](#job_cards) | 17 | ✔ |
+| [`invoice_items`](#invoice_items) | 10 | ✔ |
+| [`invoices`](#invoices) | 20 | ✔ |
+| [`job_cards`](#job_cards) | 18 | ✔ |
 | [`labour_cost_entries`](#labour_cost_entries) | 16 | ✔ |
 | [`material_categories`](#material_categories) | 4 | ✔ |
 | [`material_reservations`](#material_reservations) | 11 | ✔ |
@@ -37,9 +44,10 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | [`notifications`](#notifications) | 14 | ✔ |
 | [`organization_members`](#organization_members) | 11 | ✔ |
 | [`organization_settings`](#organization_settings) | 14 | ✔ |
-| [`organizations`](#organizations) | 25 | ✔ |
+| [`organizations`](#organizations) | 28 | ✔ |
 | [`overhead_cost_entries`](#overhead_cost_entries) | 10 | ✔ |
 | [`permissions`](#permissions) | 4 | ✔ |
+| [`plans`](#plans) | 9 | ✔ |
 | [`product_categories`](#product_categories) | 5 | ✔ |
 | [`product_cost_snapshots`](#product_cost_snapshots) | 13 | ✔ |
 | [`product_variants`](#product_variants) | 15 | ✔ |
@@ -68,17 +76,54 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | [`routing_steps`](#routing_steps) | 11 | ✔ |
 | [`routing_templates`](#routing_templates) | 11 | ✔ |
 | [`sales_allocations`](#sales_allocations) | 10 | ✔ |
-| [`sales_order_items`](#sales_order_items) | 13 | ✔ |
-| [`sales_orders`](#sales_orders) | 26 | ✔ |
+| [`sales_order_items`](#sales_order_items) | 15 | ✔ |
+| [`sales_orders`](#sales_orders) | 28 | ✔ |
+| [`sales_return_items`](#sales_return_items) | 9 | ✔ |
+| [`sales_returns`](#sales_returns) | 9 | ✔ |
 | [`shifts`](#shifts) | 11 | ✔ |
 | [`stock_adjustments`](#stock_adjustments) | 8 | ✔ |
+| [`stock_count_lines`](#stock_count_lines) | 12 | ✔ |
+| [`stock_counts`](#stock_counts) | 15 | ✔ |
 | [`stock_items`](#stock_items) | 8 | ✔ |
+| [`subscriptions`](#subscriptions) | 11 | ✔ |
 | [`supplier_contacts`](#supplier_contacts) | 9 | ✔ |
 | [`suppliers`](#suppliers) | 17 | ✔ |
 | [`units_of_measure`](#units_of_measure) | 8 | ✔ |
 | [`warehouse_locations`](#warehouse_locations) | 7 | ✔ |
 | [`warehouses`](#warehouses) | 12 | ✔ |
+| [`whatsapp_contacts`](#whatsapp_contacts) | 6 | ✔ |
+| [`whatsapp_outbox`](#whatsapp_outbox) | 12 | ✔ |
 | [`work_centres`](#work_centres) | 14 | ✔ |
+
+## ai_usage
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | bigint |  |  |
+| `organization_id` | uuid |  |  |
+| `user_id` | uuid | yes | `auth.uid()` |
+| `model` | text | yes |  |
+| `input_tokens` | integer |  | `0` |
+| `output_tokens` | integer |  | `0` |
+| `tool_calls` | integer |  | `0` |
+| `ok` | boolean |  | `true` |
+| `created_at` | timestamp with time zone |  | `now()` |
+
+## attachments
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `entity_type` | text |  |  |
+| `entity_id` | uuid |  |  |
+| `file_name` | text |  |  |
+| `content_type` | text |  |  |
+| `size_bytes` | integer |  |  |
+| `data` | bytea |  |  |
+| `caption` | text | yes |  |
+| `uploaded_by` | uuid | yes | `auth.uid()` |
+| `created_at` | timestamp with time zone |  | `now()` |
 
 ## attendance_records
 
@@ -113,6 +158,33 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `new_values` | jsonb | yes |  |
 | `source` | text |  | `'app'::text` |
 | `request_id` | text | yes |  |
+| `created_at` | timestamp with time zone |  | `now()` |
+
+## billing_events
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | text |  |  |
+| `organization_id` | uuid | yes |  |
+| `event` | text |  |  |
+| `payload` | jsonb |  |  |
+| `received_at` | timestamp with time zone |  | `now()` |
+
+## billing_payments
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `reference` | text |  |  |
+| `plan_key` | text | yes |  |
+| `amount` | numeric |  |  |
+| `currency` | text |  | `'NGN'::text` |
+| `status` | text |  |  |
+| `paid_at` | timestamp with time zone | yes |  |
+| `period_end` | timestamp with time zone | yes |  |
+| `provider` | text |  | `'paystack'::text` |
+| `created_by` | uuid | yes | `auth.uid()` |
 | `created_at` | timestamp with time zone |  | `now()` |
 
 ## bills_of_materials
@@ -188,6 +260,25 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `created_at` | timestamp with time zone |  | `now()` |
 | `updated_at` | timestamp with time zone |  | `now()` |
 | `updated_by` | uuid | yes |  |
+
+## credit_notes
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `number` | text |  |  |
+| `sales_order_id` | uuid |  |  |
+| `customer_id` | uuid |  |  |
+| `sales_return_id` | uuid | yes |  |
+| `amount` | numeric |  |  |
+| `reason` | text |  |  |
+| `status` | text |  | `'issued'::text` |
+| `issued_by` | uuid | yes | `auth.uid()` |
+| `issued_at` | timestamp with time zone |  | `now()` |
+| `voided_at` | timestamp with time zone | yes |  |
+| `voided_by` | uuid | yes |  |
+| `void_reason` | text | yes |  |
 
 ## customer_payments
 
@@ -458,6 +549,46 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `updated_at` | timestamp with time zone |  | `now()` |
 | `updated_by` | uuid | yes |  |
 
+## invoice_items
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `invoice_id` | uuid |  |  |
+| `sales_order_item_id` | uuid |  |  |
+| `description` | text |  |  |
+| `quantity` | numeric |  |  |
+| `unit_price` | numeric |  |  |
+| `discount_pct` | numeric |  |  |
+| `tax_pct` | numeric |  |  |
+| `line_total` | numeric | yes |  |
+
+## invoices
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `number` | text |  |  |
+| `sales_order_id` | uuid |  |  |
+| `customer_id` | uuid |  |  |
+| `issue_date` | date |  | `CURRENT_DATE` |
+| `due_date` | date | yes |  |
+| `status` | text |  | `'issued'::text` |
+| `currency` | text |  |  |
+| `subtotal` | numeric |  |  |
+| `discount_total` | numeric |  |  |
+| `tax_total` | numeric |  |  |
+| `shipping_charge` | numeric |  | `0` |
+| `total` | numeric |  |  |
+| `notes` | text | yes |  |
+| `issued_by` | uuid | yes | `auth.uid()` |
+| `created_at` | timestamp with time zone |  | `now()` |
+| `voided_at` | timestamp with time zone | yes |  |
+| `voided_by` | uuid | yes |  |
+| `void_reason` | text | yes |  |
+
 ## job_cards
 
 | Column | Type | Null | Default |
@@ -479,6 +610,7 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `started_at` | timestamp with time zone | yes |  |
 | `completed_at` | timestamp with time zone | yes |  |
 | `updated_at` | timestamp with time zone |  | `now()` |
+| `assigned_employee_id` | uuid | yes |  |
 
 ## labour_cost_entries
 
@@ -659,6 +791,9 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `updated_at` | timestamp with time zone |  | `now()` |
 | `updated_by` | uuid | yes |  |
 | `deleted_at` | timestamp with time zone | yes |  |
+| `tax_id` | text | yes |  |
+| `invoice_bank_details` | text | yes |  |
+| `invoice_footer` | text | yes |  |
 
 ## overhead_cost_entries
 
@@ -683,6 +818,20 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `module` | text |  |  |
 | `action` | text |  |  |
 | `description` | text |  |  |
+
+## plans
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `key` | text |  |  |
+| `name` | text |  |  |
+| `price_monthly` | numeric | yes |  |
+| `max_users` | integer | yes |  |
+| `max_factories` | integer | yes |  |
+| `ai_requests_monthly` | integer | yes |  |
+| `description` | text |  |  |
+| `features` | ARRAY |  | `'{}'::text[]` |
+| `sort` | integer |  |  |
 
 ## product_categories
 
@@ -1200,6 +1349,8 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `line_total` | numeric | yes |  |
 | `quantity_allocated` | numeric |  | `0` |
 | `quantity_dispatched` | numeric |  | `0` |
+| `quantity_returned` | numeric |  | `0` |
+| `quantity_invoiced` | numeric |  | `0` |
 
 ## sales_orders
 
@@ -1231,6 +1382,36 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `created_at` | timestamp with time zone |  | `now()` |
 | `updated_at` | timestamp with time zone |  | `now()` |
 | `updated_by` | uuid | yes |  |
+| `amount_credited` | numeric |  | `0` |
+| `shipping_invoiced` | boolean |  | `false` |
+
+## sales_return_items
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `sales_return_id` | uuid |  |  |
+| `sales_order_item_id` | uuid |  |  |
+| `stock_item_id` | uuid |  |  |
+| `quantity` | numeric |  |  |
+| `condition` | text |  |  |
+| `unit_cost` | numeric |  | `0` |
+| `inventory_transaction_id` | uuid | yes |  |
+
+## sales_returns
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `number` | text |  |  |
+| `sales_order_id` | uuid |  |  |
+| `warehouse_id` | uuid |  |  |
+| `received_at` | timestamp with time zone |  | `now()` |
+| `reason` | text |  |  |
+| `notes` | text | yes |  |
+| `received_by` | uuid | yes | `auth.uid()` |
 
 ## shifts
 
@@ -1261,6 +1442,43 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `created_by` | uuid | yes | `auth.uid()` |
 | `created_at` | timestamp with time zone |  | `now()` |
 
+## stock_count_lines
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `stock_count_id` | uuid |  |  |
+| `stock_item_id` | uuid |  |  |
+| `expected` | numeric |  |  |
+| `counted` | numeric | yes |  |
+| `unit_cost` | numeric |  | `0` |
+| `note` | text | yes |  |
+| `counted_by` | uuid | yes |  |
+| `counted_at` | timestamp with time zone | yes |  |
+| `adjustment` | numeric | yes |  |
+| `inventory_transaction_id` | uuid | yes |  |
+
+## stock_counts
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid |  | `gen_random_uuid()` |
+| `organization_id` | uuid |  |  |
+| `number` | text |  |  |
+| `warehouse_id` | uuid |  |  |
+| `scope` | text |  | `'all'::text` |
+| `blind` | boolean |  | `false` |
+| `status` | text |  | `'in_progress'::text` |
+| `notes` | text | yes |  |
+| `started_at` | timestamp with time zone |  | `now()` |
+| `created_by` | uuid | yes | `auth.uid()` |
+| `submitted_by` | uuid | yes |  |
+| `submitted_at` | timestamp with time zone | yes |  |
+| `approved_by` | uuid | yes |  |
+| `approved_at` | timestamp with time zone | yes |  |
+| `decision_note` | text | yes |  |
+
 ## stock_items
 
 | Column | Type | Null | Default |
@@ -1273,6 +1491,22 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `uom_id` | uuid |  |  |
 | `average_cost` | numeric |  | `0` |
 | `created_at` | timestamp with time zone |  | `now()` |
+
+## subscriptions
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `organization_id` | uuid |  |  |
+| `plan_key` | text |  | `'growth'::text` |
+| `status` | text |  | `'trialing'::text` |
+| `trial_ends_at` | timestamp with time zone | yes |  |
+| `current_period_end` | timestamp with time zone | yes |  |
+| `cancel_at_period_end` | boolean |  | `false` |
+| `paystack_customer_code` | text | yes |  |
+| `paystack_subscription_code` | text | yes |  |
+| `paystack_email_token` | text | yes |  |
+| `billing_email` | text | yes |  |
+| `updated_at` | timestamp with time zone |  | `now()` |
 
 ## supplier_contacts
 
@@ -1352,6 +1586,34 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `updated_by` | uuid | yes |  |
 | `deleted_at` | timestamp with time zone | yes |  |
 
+## whatsapp_contacts
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `organization_id` | uuid |  |  |
+| `user_id` | uuid |  |  |
+| `phone` | text |  |  |
+| `opted_in_at` | timestamp with time zone |  | `now()` |
+| `alerts` | boolean |  | `true` |
+| `daily_summary` | boolean |  | `false` |
+
+## whatsapp_outbox
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | bigint |  |  |
+| `organization_id` | uuid |  |  |
+| `user_id` | uuid | yes |  |
+| `phone` | text |  |  |
+| `body` | text |  |  |
+| `link` | text | yes |  |
+| `status` | text |  | `'pending'::text` |
+| `attempts` | integer |  | `0` |
+| `error` | text | yes |  |
+| `provider_id` | text | yes |  |
+| `created_at` | timestamp with time zone |  | `now()` |
+| `sent_at` | timestamp with time zone | yes |  |
+
 ## work_centres
 
 | Column | Type | Null | Default |
@@ -1376,21 +1638,33 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | Function | Arguments |
 |---|---|
 | `accept_invitation` | `p_token text` |
+| `ai_finish_request` | `p_usage bigint, p_model text, p_in integer, p_out integer, p_tools integer, p_ok boolean` |
+| `ai_reserve_request` | `p_org uuid` |
 | `apply_stage_template` | `p_org uuid, p_template text` |
 | `attendance_record` | `p_org uuid, p jsonb` |
 | `attendance_summary` | `p_org uuid, p_from date, p_to date` |
+| `billing_record_payment` | `p_org uuid, p_reference text, p_plan text, p_amount numeric, p_paid_at timestamp with time zone, p_customer_code text, p_email text` |
+| `billing_start_checkout` | `p_org uuid, p_plan text, p_reference text` |
+| `billing_state` | `p_org uuid` |
+| `billing_update_subscription` | `p_org uuid, p jsonb` |
 | `bom_cost_estimate` | `p_bom uuid` |
 | `bom_create_version` | `p_product uuid, p_variant uuid, p_copy_from uuid` |
 | `bom_transition` | `p_bom uuid, p_action text, p_note text` |
+| `bottleneck_analysis` | `p_org uuid, p_days integer` |
 | `complete_onboarding` | `p_org uuid` |
 | `corrective_action_update` | `p_action uuid, p_status text, p_resolution text` |
 | `cost_entry_add` | `p_order uuid, p jsonb` |
 | `cost_entry_remove` | `p_entry uuid, p_kind text` |
+| `create_demo_organization` | `` |
 | `create_factory` | `p_org uuid, p jsonb` |
 | `create_invitation` | `p_org uuid, p_email text, p_role uuid` |
 | `create_organization` | `p jsonb` |
+| `credit_note_issue` | `p_so uuid, p_amount numeric, p_reason text` |
+| `credit_note_void` | `p_note uuid, p_reason text` |
 | `dashboard_summary` | `p_org uuid, p_factory uuid, p_from date, p_to date` |
 | `defect_summary` | `p_org uuid, p_from date, p_to date` |
+| `demand_forecast` | `p_org uuid, p_weeks integer` |
+| `detect_anomalies` | `p_org uuid` |
 | `dispatch_confirm_delivery` | `p_dispatch uuid, p_received_by text, p_notes text, p_delivered_at timestamp with time zone` |
 | `dispatch_post` | `p_so uuid, p jsonb, p_idem text` |
 | `get_invitation` | `p_token text` |
@@ -1402,8 +1676,12 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `inventory_receive` | `p_org uuid, p_item uuid, p_warehouse uuid, p_quantity numeric, p_unit_cost numeric, p_type text, p_reference text, p_notes text, p_idem text` |
 | `inventory_reverse` | `p_txn uuid, p_reason text` |
 | `inventory_transfer` | `p_org uuid, p_item uuid, p_from uuid, p_to uuid, p_quantity numeric, p_notes text, p_idem text` |
+| `invoice_issue` | `p_so uuid, p jsonb` |
+| `invoice_void` | `p_invoice uuid, p_reason text` |
 | `job_card_action` | `p_card uuid, p_action text, p_good numeric, p_rejected numeric, p_message text, p_client_ref text` |
-| `job_card_issue` | `p_operation uuid, p_assignee uuid, p_team text, p_target numeric, p_instructions text` |
+| `job_card_issue` | `p_operation uuid, p_assignee uuid, p_team text, p_target numeric, p_instructions text, p_employee uuid` |
+| `leave_demo_organization` | `p_org uuid` |
+| `material_requirements` | `p_org uuid, p_weeks integer` |
 | `my_job_cards` | `p_org uuid, p_include_completed boolean` |
 | `my_organizations` | `` |
 | `my_permissions` | `p_org uuid` |
@@ -1411,6 +1689,9 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `overdue_purchase_orders` | `p_org uuid` |
 | `payment_record` | `p_so uuid, p jsonb` |
 | `payment_void` | `p_payment uuid, p_reason text` |
+| `platform_organizations` | `p_search text` |
+| `platform_overview` | `` |
+| `platform_update_organization` | `p_org uuid, p jsonb` |
 | `procurement_suggestions` | `p_org uuid` |
 | `product_cost_estimate` | `p_product uuid, p_save boolean` |
 | `production_add_note` | `p_order uuid, p_operation uuid, p_message text` |
@@ -1437,7 +1718,14 @@ All primary keys are UUIDs. Every organisation-owned table carries `organization
 | `sales_order_make` | `p_item uuid, p jsonb` |
 | `sales_order_save` | `p_org uuid, p_so uuid, p jsonb` |
 | `sales_order_transition` | `p_so uuid, p_action text, p_note text` |
+| `sales_return_post` | `p_so uuid, p jsonb, p_idem text` |
 | `set_active_organization` | `p_org uuid` |
 | `set_member_roles` | `p_member uuid, p_roles uuid[]` |
 | `set_role_permissions` | `p_role uuid, p_permissions text[]` |
+| `stock_count_record` | `p_count uuid, p_lines jsonb` |
+| `stock_count_sheet` | `p_count uuid` |
+| `stock_count_start` | `p_org uuid, p jsonb` |
+| `stock_count_transition` | `p_count uuid, p_action text, p_note text` |
 | `update_member` | `p_member uuid, p_status text, p_job_title text, p_factory uuid` |
+| `whatsapp_daily_summary` | `p_org uuid` |
+| `whatsapp_handle_message` | `p_phone text, p_text text` |
