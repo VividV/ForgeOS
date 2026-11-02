@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   poweredByHeader: false,
   typedRoutes: false,
+  // Uploads (photos, PDFs) are capped at 4 MB; Vercel functions accept at most 4.5 MB per request.
+  experimental: { serverActions: { bodySizeLimit: "4.2mb" } },
   turbopack: {
     rules: {
       "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" },

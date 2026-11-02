@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Attachments } from "@/components/files/attachments";
 import { notFound } from "next/navigation";
 import { Badge, QcResultBadge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/card";
@@ -143,6 +144,9 @@ export default async function QualityCheckPage({ params }: { params: Promise<{ i
             />
           </CardBody>
         </Card>
+      </div>
+      <div className="mt-4">
+        <Attachments entityType="quality_check" entityId={c.id} canUpload={ctx.can("quality.create")} userId={ctx.user.id} canManage={ctx.can("settings.manage")} />
       </div>
     </>
   );

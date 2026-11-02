@@ -1,5 +1,6 @@
-import { Pencil, Printer, Send } from "lucide-react";
+import { Pencil, Printer, Send, Undo2 } from "lucide-react";
 import Link from "next/link";
+import { Attachments } from "@/components/files/attachments";
 import { notFound } from "next/navigation";
 import { Badge, PaymentBadge, ProductionStatusBadge, SalesStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
 import { getSession, requirePermission } from "@/lib/auth";
 import { formatDate, formatDateTime, formatMoney, formatQty, todayIn } from "@/lib/format";
 import { lookups } from "@/lib/services/lookups";
-import { OrderActions, PlanProduction, RecordPayment, VoidPayment } from "./client";
+import { CreditNoteButton, InvoiceButton, OrderActions, PlanProduction, RecordPayment, VoidCreditNote, VoidPayment } from "./client";
 
 type Line = {
   id: string;
@@ -37,6 +38,8 @@ type Line = {
     completed: number;
     due_date: string | null;
   }[];
+  returned: number;
+  invoiced: number;
 };
 const METHOD: Record<string, string> = {
   bank_transfer: "Bank transfer",
@@ -71,6 +74,11 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
     supabase.from("customer_payments").select("*, recorder:profiles!customer_payments_recorded_by_fkey(full_name)").eq("sales_order_id", id).order("paid_on"),
     lookups(ctx.org.id, ["factories"]),
   ]);
+  const [{ data: invoices }, { data: credits }, { data: returns }] = await Promise.all([
+    supabase.from("invoices").select("id, number, issue_date, total, status").eq("sales_order_id", id).order("created_at"),
+    supabase.from("credit_notes").select("id, number, amount, reason, status, issued_at").eq("sales_order_id", id).order("issued_at"),
+    supabase.from("sales_returns").select("id, number, received_at, reason, sales_return_items(quantity, condition)").eq("sales_order_id", id).order("received_at"),
+  ]);
   const lines = (lineData ?? []) as Line[];
   const cur = so.currency;
   const df = ctx.settings.date_format;
@@ -88,8 +96,9 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
   const ordered = lines.reduce((s, l) => s + Number(l.quantity), 0);
   const shipped = lines.reduce((s, l) => s + Number(l.dispatched), 0);
   const ready = lines.reduce((s, l) => s + Number(l.allocated), 0);
-  const balance = Number(so.total) - Number(so.amount_paid);
+  const balance = Number(so.total) - Number(so.amount_paid) - Number(so.amount_credited);
   const canMake = ctx.can("production_orders.create");
+  const canReturn = ["partially_dispatched", "dispatched", "delivered", "closed"].includes(so.status) && ctx.can("sales_orders.dispatch") && lines.some((l) => Number(l.dispatched) > Number(l.returned));
   const canDispatch =
     open && ctx.can("sales_orders.dispatch") && lines.some((l) => Number(l.quantity) > Number(l.dispatched) && Number(l.allocated) + Math.max(Number(l.available), 0) > 0);
 
@@ -100,7 +109,7 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
         meta={
           <>
             <SalesStatusBadge status={so.status} />
-            <PaymentBadge total={Number(so.total)} paid={Number(so.amount_paid)} status={so.status} />
+            <PaymentBadge total={Number(so.total) - Number(so.amount_credited)} paid={Number(so.amount_paid)} status={so.status} />
             {late && <Badge tone="danger">Late</Badge>}
           </>
         }
@@ -274,13 +283,95 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
               </Table>
             )}
           </Card>
+
+          {(returns ?? []).length > 0 || canReturn ? (
+            <Card>
+              <CardHeader
+                title="Returns"
+                action={
+                  canReturn && (
+                    <Button asChild size="sm">
+                      <Link href={`/commerce/customer-orders/${so.id}/return`}>
+                        <Undo2 /> Record return
+                      </Link>
+                    </Button>
+                  )
+                }
+              />
+              {(returns ?? []).length === 0 ? (
+                <EmptyState title="No returns" />
+              ) : (
+                <Table>
+                  <TBody>
+                    {(returns ?? []).map((r) => {
+                      const items = (r.sales_return_items as { quantity: number; condition: string }[]) ?? [];
+                      const restocked = items.filter((i) => i.condition === "restock").reduce((a, i) => a + Number(i.quantity), 0);
+                      const damaged = items.filter((i) => i.condition === "damaged").reduce((a, i) => a + Number(i.quantity), 0);
+                      return (
+                        <TR key={r.id}>
+                          <TD className="font-medium">{r.number}</TD>
+                          <TD className="text-muted">{formatDate(r.received_at, df, tz)}</TD>
+                          <TD>{r.reason}</TD>
+                          <TD align="right">
+                            {formatQty(restocked)} restocked{damaged > 0 ? ` · ${formatQty(damaged)} damaged` : ""}
+                          </TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                </Table>
+              )}
+            </Card>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader
+              title="Invoices & credits"
+              action={
+                so.status !== "draft" &&
+                so.status !== "cancelled" && (
+                  <div className="flex gap-1">
+                    {ctx.can("sales_orders.create") && <InvoiceButton orderId={so.id} hasDispatched={shipped > 0} />}
+                    {ctx.can("sales_orders.manage") && <CreditNoteButton orderId={so.id} max={Number(so.total) - Number(so.amount_credited)} />}
+                  </div>
+                )
+              }
+            />
+            {(invoices ?? []).length === 0 && (credits ?? []).length === 0 ? (
+              <EmptyState title="No invoices yet" description="Issue a tax invoice for what's been dispatched, or for the whole order in advance." />
+            ) : (
+              <ul className="divide-y divide-line">
+                {(invoices ?? []).map((i) => (
+                  <li key={i.id} className={`flex items-center gap-2 px-4 py-2.5 text-[13px] ${i.status === "void" ? "opacity-60" : ""}`}>
+                    <Link href={`/commerce/invoices/${i.id}`} className="font-medium text-accent-ink hover:underline">
+                      {i.number}
+                    </Link>
+                    <span className="text-xs text-muted">{formatDate(i.issue_date, df)}</span>
+                    <span className={`tabular ml-auto ${i.status === "void" ? "line-through" : ""}`}>{formatMoney(i.total, cur)}</span>
+                    {i.status === "void" && <Badge>Void</Badge>}
+                  </li>
+                ))}
+                {(credits ?? []).map((cn) => (
+                  <li key={cn.id} className={`flex items-center gap-2 px-4 py-2.5 text-[13px] ${cn.status === "void" ? "opacity-60" : ""}`}>
+                    <div className="min-w-0 flex-1">
+                      <p>
+                        <span className="font-medium">{cn.number}</span> <span className="text-xs text-muted">credit note</span>
+                      </p>
+                      <p className="truncate text-xs text-muted">{cn.reason}</p>
+                    </div>
+                    <span className={`tabular ${cn.status === "void" ? "line-through" : ""}`}>−{formatMoney(cn.amount, cur)}</span>
+                    {cn.status !== "void" && ctx.can("sales_orders.manage") && <VoidCreditNote id={cn.id} />}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <Card>
+            <CardHeader
               title="Payments"
-              description={`${formatMoney(so.amount_paid, cur)} paid · ${formatMoney(balance, cur)} due`}
+              description={`${formatMoney(so.amount_paid, cur)} paid${Number(so.amount_credited) > 0 ? ` · ${formatMoney(so.amount_credited, cur)} credited` : ""} · ${formatMoney(balance, cur)} due`}
               action={ctx.can("sales_orders.create") && so.status !== "cancelled" && balance > 0.004 && <RecordPayment orderId={so.id} balance={balance} />}
             />
             {(payments ?? []).length === 0 ? (
@@ -354,6 +445,9 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
             </CardBody>
           </Card>
         </div>
+      </div>
+      <div className="mt-4">
+        <Attachments entityType="sales_order" entityId={so.id} canUpload={ctx.can("sales_orders.create")} userId={ctx.user.id} canManage={ctx.can("settings.manage")} />
       </div>
     </>
   );

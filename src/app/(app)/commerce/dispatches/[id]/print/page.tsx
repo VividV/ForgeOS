@@ -24,6 +24,8 @@ export default async function PrintDeliveryNote({ params }: { params: Promise<{ 
       <article className="rounded-lg border border-ink/80 bg-white p-8 text-ink print:border-0 print:p-0">
         <header className="flex items-start justify-between gap-6 border-b-2 border-ink pb-4">
           <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {ctx.org.logo_url && <img src={ctx.org.logo_url} alt="" className="mb-2 h-12 w-auto" />}
             <p className="text-lg font-bold">{org?.name ?? ctx.org.name}</p>
             {org?.address && <p className="whitespace-pre-line text-xs">{org.address}</p>}
             <p className="text-xs">{[org?.phone, org?.email].filter(Boolean).join(" · ")}</p>

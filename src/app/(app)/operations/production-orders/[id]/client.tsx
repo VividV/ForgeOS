@@ -285,7 +285,7 @@ export function OperationActions({ orderId, op, orderStatus, canSkip }: { orderI
   );
 }
 
-export function JobCardDialog({ orderId, operations, members, defaultTarget, defaultOp }: { orderId: string; operations: Opt; members: Opt; defaultTarget: number; defaultOp?: string }) {
+export function JobCardDialog({ orderId, operations, members, employees = [], defaultTarget, defaultOp }: { orderId: string; operations: Opt; members: Opt; employees?: Opt; defaultTarget: number; defaultOp?: string }) {
   return (
     <FormDialog
       triggerLabel="Issue job card"
@@ -297,7 +297,8 @@ export function JobCardDialog({ orderId, operations, members, defaultTarget, def
       defaultValues={{ operation_id: defaultOp, target_quantity: String(defaultTarget) }}
       fields={[
         { name: "operation_id", label: "Step", type: "select", required: true, options: operations },
-        { name: "assigned_user_id", label: "Assign to person", type: "select", options: members },
+        { name: "assigned_user_id", label: "Assign to person (with login)", type: "select", options: members },
+        ...(employees.length ? [{ name: "assigned_employee_id", label: "…or employee (no login needed)", type: "select" as const, options: employees }] : []),
         { name: "assigned_team", label: "…or team", placeholder: "Sewing team B" },
         { name: "target_quantity", label: "Target quantity", type: "number", required: true },
         { name: "instructions", label: "Instructions", type: "textarea" },

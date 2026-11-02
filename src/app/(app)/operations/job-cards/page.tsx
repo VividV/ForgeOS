@@ -20,7 +20,7 @@ export default async function JobCardsPage({ searchParams }: { searchParams: Pro
   const { supabase } = await getSession();
   let q = supabase
     .from("job_cards")
-    .select("id, code, status, target_quantity, quantity_completed, quantity_rejected, assigned_team, issued_at, assignee:profiles!job_cards_assignee_profile_fk(full_name), production_orders(id, number, products(name)), production_operations(name)", { count: "exact" })
+    .select("id, code, status, target_quantity, quantity_completed, quantity_rejected, assigned_team, issued_at, assignee:profiles!job_cards_assignee_profile_fk(full_name), employee:employees(full_name), production_orders(id, number, products(name)), production_operations(name)", { count: "exact" })
     .eq("organization_id", ctx.org.id);
   if (params.filters.status) q = q.eq("status", params.filters.status);
   else q = q.in("status", ["open", "in_progress", "paused"]);
@@ -68,7 +68,7 @@ export default async function JobCardsPage({ searchParams }: { searchParams: Pro
                       <p className="text-xs text-muted">{po.products.name}</p>
                     </TD>
                     <TD>{(c.production_operations as unknown as { name: string }).name}</TD>
-                    <TD>{(c.assignee as unknown as { full_name: string } | null)?.full_name || c.assigned_team}</TD>
+                    <TD>{(c.employee as unknown as { full_name: string } | null)?.full_name || (c.assignee as unknown as { full_name: string } | null)?.full_name || c.assigned_team}</TD>
                     <TD>
                       <div className="flex items-center gap-2">
                         <Progress value={(Number(c.quantity_completed) / Number(c.target_quantity)) * 100} />

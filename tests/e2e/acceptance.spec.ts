@@ -580,6 +580,58 @@ test("P1 workforce: departments, shifts, an employee without a login, attendance
   await expect(row.getByRole("cell").nth(7)).toHaveText("2");
 });
 
+test("P1 operations: customer return with credit, tax invoice, photo upload, blind stock count", async ({ browser }) => {
+  const page = await ownerPage(browser);
+  await page.goto("/commerce/customer-orders");
+  await page.getByRole("link", { name: "SO-00001" }).click();
+  await page.waitForURL(/\/commerce\/customer-orders\/[0-9a-f-]{36}$/);
+  const soUrl = page.url();
+
+  // 3 shirts come back in good condition; a credit note is raised at the price charged
+  await page.getByRole("link", { name: "Record return" }).click();
+  await page.getByLabel("Returned Men's Cotton Shirt (SHIRT-M)").fill("3");
+  await page.getByLabel(/^Reason/).fill("Wrong size");
+  await page.getByRole("button", { name: "Record return" }).click();
+  await toast(page, "Return recorded and credit note issued");
+  await expect(page.getByText("−₦48,375.00")).toBeVisible(); // 3 × ₦15,000 + 7.5% VAT
+
+  // tax invoice for what was dispatched and kept: 90 × ₦15,000 + 7.5% + ₦3,000 delivery
+  await page.getByRole("button", { name: "Invoice", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Issue invoice" }).click();
+  await page.waitForURL(/\/commerce\/invoices\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("Tax invoice")).toBeVisible();
+  await expect(page.getByText("INV-00001")).toBeVisible();
+  await expect(page.getByText("₦1,454,250.00").first()).toBeVisible();
+
+  // a photo on the order (as from a phone camera)
+  await page.goto(soUrl);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.locator('input[type="file"]').setInputFiles({ name: "packing.png", mimeType: "image/png", buffer: png });
+  await toast(page, "File uploaded");
+  await expect(page.getByRole("img", { name: "packing.png" })).toBeVisible();
+
+  // blind stock count of the store: count fabric only
+  await page.goto("/inventory/counts");
+  await page.getByRole("button", { name: "Start a count" }).click();
+  await page.getByRole("dialog").getByLabel(/^Warehouse/).selectOption({ label: "Ikeja Plant store (IKJ-STR)" });
+  await page.getByRole("dialog").getByRole("button", { name: "Create count sheet" }).click();
+  await page.waitForURL(/\/inventory\/counts\/[0-9a-f-]{36}$/);
+  await page.getByLabel("Counted Cotton fabric").fill("235"); // system shows 239 m in this store (25 m are in the overflow store)
+  await page.getByLabel("Note Cotton fabric").fill("4 m of offcuts thrown out");
+  await page.getByRole("button", { name: "Save counts" }).click();
+  await toast(page, "Counts saved");
+  await page.getByRole("button", { name: "Submit for approval" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
+  await toast(page, "Count submitted");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Approve & adjust" }).click();
+  await toast(page, /Count approved/);
+  await expect(page.getByRole("row", { name: /Cotton fabric/ })).toContainText("-4");
+  await page.goto("/inventory/materials");
+  await page.getByRole("link", { name: "Cotton fabric" }).click();
+  await expect(page.getByText("260 m").first()).toBeVisible();
+});
+
 test("10. security: another organisation can't reach this organisation's records", async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();

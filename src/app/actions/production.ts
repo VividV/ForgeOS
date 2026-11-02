@@ -178,10 +178,11 @@ export async function addNote(orderId: string, values: Record<string, unknown>):
 const jobCardSchema = z.object({
   operation_id: z.uuid("Choose a step"),
   assigned_user_id: optUuid,
+  assigned_employee_id: optUuid,
   assigned_team: optText(80),
   target_quantity: positive(),
   instructions: optText(1000),
-}).refine((v) => v.assigned_user_id || v.assigned_team, { path: ["assigned_user_id"], message: "Assign to a person or a team" });
+}).refine((v) => v.assigned_user_id || v.assigned_team || v.assigned_employee_id, { path: ["assigned_user_id"], message: "Assign to a person, an employee or a team" });
 
 export async function issueJobCard(orderId: string, values: Record<string, unknown>): Promise<R> {
   const p = parseOrFields(jobCardSchema, values);
@@ -189,7 +190,7 @@ export async function issueJobCard(orderId: string, values: Record<string, unkno
   const c = await actionContext("job_cards.create");
   if ("error" in c) return { ok: false, error: c.error! };
   const d = p.data;
-  const { data, error } = await c.supabase.rpc("job_card_issue", { p_operation: d.operation_id, p_assignee: d.assigned_user_id, p_team: d.assigned_team, p_target: d.target_quantity, p_instructions: d.instructions });
+  const { data, error } = await c.supabase.rpc("job_card_issue", { p_operation: d.operation_id, p_assignee: d.assigned_user_id, p_team: d.assigned_team, p_target: d.target_quantity, p_instructions: d.instructions, p_employee: d.assigned_employee_id });
   if (error) return fail(error);
   touch(orderId);
   return { ok: true, data: { id: data as string }, message: "Job card issued" };

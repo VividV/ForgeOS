@@ -2,7 +2,7 @@
 import { DescriptionList } from "@/components/ui/card";
 import { SchemaForm } from "@/components/forms/schema-form";
 import { saveConfigurationSettings, saveOrgDetails } from "@/app/actions/settings";
-import { BUSINESS_TYPES, COUNTRIES, INDUSTRIES, TIMEZONES, configSchema, orgSchema } from "@/lib/validation/onboarding";
+import { BUSINESS_TYPES, COUNTRIES, INDUSTRIES, TIMEZONES, configSchema, orgSettingsSchema } from "@/lib/validation/onboarding";
 import { z } from "zod";
 
 export function OrgSettingsForm({ defaults, editable }: { defaults: Record<string, unknown>; editable: boolean }) {
@@ -14,7 +14,7 @@ export function OrgSettingsForm({ defaults, editable }: { defaults: Record<strin
     );
   return (
     <SchemaForm
-      schema={orgSchema}
+      schema={orgSettingsSchema}
       defaultValues={defaults}
       fields={[
         { name: "name", label: "Company name", required: true, span: 2 },
@@ -25,6 +25,9 @@ export function OrgSettingsForm({ defaults, editable }: { defaults: Record<strin
         { name: "email", label: "Company email", type: "email" },
         { name: "website", label: "Website", type: "url" },
         { name: "address", label: "Address", type: "textarea" },
+        { name: "tax_id", label: "Tax ID (TIN)", hint: "Printed on tax invoices" },
+        { name: "invoice_bank_details", label: "Payment details on invoices", type: "textarea", placeholder: "Bank, account name, account number" },
+        { name: "invoice_footer", label: "Invoice footer", type: "textarea", placeholder: "e.g. Thank you for your business. Goods remain our property until paid in full." },
       ]}
       action={saveOrgDetails}
     />

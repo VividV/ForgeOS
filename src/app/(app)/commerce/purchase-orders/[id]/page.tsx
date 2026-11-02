@@ -1,5 +1,6 @@
 import { PackageOpen, Pencil, Printer } from "lucide-react";
 import Link from "next/link";
+import { Attachments } from "@/components/files/attachments";
 import { notFound } from "next/navigation";
 import { Badge, ProcurementStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -212,6 +213,9 @@ export default async function PurchaseOrderPage({ params }: { params: Promise<{ 
             </CardBody>
           </Card>
         </div>
+      </div>
+      <div className="mt-4">
+        <Attachments entityType="purchase_order" entityId={po.id} canUpload={ctx.can("procurement.create")} userId={ctx.user.id} canManage={ctx.can("settings.manage")} />
       </div>
     </>
   );

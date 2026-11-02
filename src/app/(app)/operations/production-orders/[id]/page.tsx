@@ -1,5 +1,6 @@
 import { FilePlus, Printer } from "lucide-react";
 import Link from "next/link";
+import { Attachments } from "@/components/files/attachments";
 import { notFound } from "next/navigation";
 import { InspectionDialog } from "@/components/quality/inspection-dialog";
 import { Badge, PriorityBadge, ProductionStatusBadge, QcResultBadge } from "@/components/ui/badge";
@@ -35,11 +36,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const [{ data: mats }, { data: ops }, { data: cards }, { data: logs }, { data: outputs }, { data: avail }, opts] = await Promise.all([
     supabase.from("production_material_reconciliation").select("*").eq("production_order_id", id).order("line_no"),
     supabase.from("production_operations").select("*, production_stages(name), work_centres(name)").eq("production_order_id", id).order("sequence"),
-    supabase.from("job_cards").select("*, assignee:profiles!job_cards_assignee_profile_fk(full_name)").eq("production_order_id", id).order("issued_at"),
+    supabase.from("job_cards").select("*, assignee:profiles!job_cards_assignee_profile_fk(full_name), employee:employees(full_name)").eq("production_order_id", id).order("issued_at"),
     supabase.from("production_logs").select("*, profiles:created_by(full_name), production_operations(name)").eq("production_order_id", id).order("occurred_at", { ascending: false }).limit(60),
     supabase.from("production_outputs").select("*").eq("production_order_id", id),
     supabase.from("inventory_balances").select("stock_item_id, available").eq("warehouse_id", o.material_warehouse_id),
-    lookups(ctx.org.id, ctx.canAny("workforce.read", "costing.manage") ? ["members", "workCentres", "employees"] : ["members", "workCentres"]),
+    lookups(ctx.org.id, ctx.canAny("workforce.read", "costing.manage", "job_cards.create") ? ["members", "workCentres", "employees"] : ["members", "workCentres"]),
   ]);
   const qRead = ctx.can("quality.read");
   const costs = ctx.can("costing.read");
@@ -225,7 +226,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <CardHeader
               title="Production steps"
               description={current ? `Current step: ${current.name}` : o.status === "completed" ? "All steps complete" : undefined}
-              action={isOpen && can.jobs && !["draft", "awaiting_approval"].includes(o.status) && <JobCardDialog orderId={o.id} operations={opOpts} members={opts.members} defaultTarget={Number(o.quantity_planned)} defaultOp={current?.id} />}
+              action={isOpen && can.jobs && !["draft", "awaiting_approval"].includes(o.status) && <JobCardDialog orderId={o.id} operations={opOpts} members={opts.members} employees={opts.employees ?? []} defaultTarget={Number(o.quantity_planned)} defaultOp={current?.id} />}
             />
             {operations.length === 0 ? (
               <EmptyState title="No steps" />
@@ -270,7 +271,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                             <li key={c.id}>
                               <Link href={`/operations/job-cards/${c.id}/print`} className="inline-flex items-center gap-1.5 rounded border border-line px-2 py-1 text-xs hover:border-line-strong">
                                 <span className="font-mono">{c.code}</span>
-                                <span className="text-muted">{(c.assignee as unknown as { full_name: string } | null)?.full_name || c.assigned_team}</span>
+                                <span className="text-muted">{(c.employee as unknown as { full_name: string } | null)?.full_name || (c.assignee as unknown as { full_name: string } | null)?.full_name || c.assigned_team}</span>
                                 <span className="tabular">
                                   {formatQty(c.quantity_completed)}/{formatQty(c.target_quantity)}
                                 </span>
@@ -532,7 +533,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 {(cards ?? []).map((c) => (
                   <li key={c.id} className="flex items-center gap-2 px-4 py-2 text-[13px]">
                     <span className="font-mono text-xs">{c.code}</span>
-                    <span className="flex-1 truncate">{(c.assignee as unknown as { full_name: string } | null)?.full_name || c.assigned_team}</span>
+                    <span className="flex-1 truncate">{(c.employee as unknown as { full_name: string } | null)?.full_name || (c.assignee as unknown as { full_name: string } | null)?.full_name || c.assigned_team}</span>
                     <Button asChild size="icon-sm" variant="ghost" aria-label={`Print ${c.code}`}>
                       <Link href={`/operations/job-cards/${c.id}/print`}>
                         <Printer />
@@ -544,6 +545,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </Card>
           )}
         </div>
+      </div>
+      <div className="mt-4">
+        <Attachments entityType="production_order" entityId={o.id} canUpload={ctx.can("production_orders.update")} userId={ctx.user.id} canManage={ctx.can("settings.manage")} />
       </div>
     </>
   );

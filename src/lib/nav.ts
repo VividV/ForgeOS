@@ -36,6 +36,7 @@ export const NAV: NavGroup[] = [
       { href: "/inventory/movements", label: "Stock Movements", icon: "arrow-left-right", anyOf: ["inventory.read"] },
       { href: "/inventory/reservations", label: "Material Reservations", icon: "lock", anyOf: ["inventory.read"] },
       { href: "/inventory/adjustments", label: "Stock Adjustments", icon: "sliders-horizontal", anyOf: ["inventory.read"] },
+      { href: "/inventory/counts", label: "Stock Counts", icon: "clipboard-check", anyOf: ["inventory.read"] },
       { href: "/inventory/warehouses", label: "Warehouses", icon: "warehouse", anyOf: ["warehouses.read"] },
       { href: "/inventory/reorder", label: "Reorder Alerts", icon: "bell-ring", anyOf: ["inventory.read"] },
     ],
@@ -45,6 +46,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/commerce/customer-orders", label: "Customer Orders", icon: "receipt", anyOf: ["sales_orders.read"] },
       { href: "/commerce/dispatches", label: "Dispatches", icon: "send", anyOf: ["sales_orders.read"] },
+      { href: "/commerce/invoices", label: "Invoices", icon: "file-text", anyOf: ["sales_orders.read"] },
       { href: "/commerce/customers", label: "Customers", icon: "contact", anyOf: ["customers.read", "sales_orders.read"] },
       { href: "/commerce/products", label: "Products", icon: "shirt", anyOf: ["products.read"] },
       { href: "/commerce/boms", label: "Bills of Materials", icon: "list-tree", anyOf: ["bom.read"] },

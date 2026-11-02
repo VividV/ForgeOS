@@ -28,6 +28,12 @@ export const orgSchema = z.object({
   website: z.union([z.url("Enter a full URL, e.g. https://example.com"), z.literal("")]).optional(),
 });
 
+export const orgSettingsSchema = orgSchema.extend({
+  tax_id: opt(40),
+  invoice_bank_details: opt(500),
+  invoice_footer: opt(500),
+});
+
 export const PRODUCTION_MODELS = [
   { value: "make_to_order", label: "Make to order" },
   { value: "make_to_stock", label: "Make to stock" },

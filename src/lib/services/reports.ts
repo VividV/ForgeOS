@@ -327,7 +327,7 @@ export async function buildReport(
   if (key === "sales") {
     const { data, error } = await sb
       .from("sales_orders")
-      .select("number, status, order_date, requested_date, total, amount_paid, customers(name), sales_order_items(quantity, quantity_dispatched)")
+      .select("number, status, order_date, requested_date, total, amount_paid, amount_credited, customers(name), sales_order_items(quantity, quantity_dispatched)")
       .eq("organization_id", org)
       .neq("status", "draft")
       .gte("order_date", opts.from)
@@ -350,7 +350,8 @@ export async function buildReport(
         dispatched_pct: q ? (d / q) * 100 : null,
         total: cancelled ? 0 : Number(o.total),
         paid: Number(o.amount_paid),
-        balance: cancelled ? 0 : Number(o.total) - Number(o.amount_paid),
+        credited: Number(o.amount_credited),
+        balance: cancelled ? 0 : Number(o.total) - Number(o.amount_paid) - Number(o.amount_credited),
       };
     });
     const sum = (k: "units" | "total" | "paid" | "balance") => rows.reduce((a, r) => a + r[k], 0);
@@ -358,7 +359,7 @@ export async function buildReport(
       columns: [
         { key: "number", label: "Order" }, { key: "customer", label: "Customer" }, { key: "ordered_on", label: "Ordered", kind: "date" }, { key: "wanted_by", label: "Wanted by", kind: "date" },
         { key: "status", label: "Status" }, { key: "units", label: "Units", kind: "qty" }, { key: "dispatched_pct", label: "Dispatched", kind: "pct" },
-        { key: "total", label: "Total", kind: "money" }, { key: "paid", label: "Paid", kind: "money" }, { key: "balance", label: "Balance due", kind: "money" },
+        { key: "total", label: "Total", kind: "money" }, { key: "paid", label: "Paid", kind: "money" }, { key: "credited", label: "Credited", kind: "money" }, { key: "balance", label: "Balance due", kind: "money" },
       ],
       rows,
       totals: { units: sum("units"), total: sum("total"), paid: sum("paid"), balance: sum("balance") },

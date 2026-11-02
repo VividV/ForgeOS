@@ -19,7 +19,7 @@ export default async function CustomerOrdersPage({ searchParams }: { searchParam
   const sp = await searchParams;
   const params = parseList(sp, { sortable: ["order_date", "requested_date", "total"], defaultSort: "order_date", defaultDir: "desc", filters: ["status", "customer", "payment"] });
   const { supabase } = await getSession();
-  let q = supabase.from("sales_orders").select("id, number, status, order_date, requested_date, total, amount_paid, currency, customer_reference, customers(name)", { count: "exact" }).eq("organization_id", ctx.org.id);
+  let q = supabase.from("sales_orders").select("id, number, status, order_date, requested_date, total, amount_paid, amount_credited, currency, customer_reference, customers(name)", { count: "exact" }).eq("organization_id", ctx.org.id);
   if (params.filters.status === "open") q = q.in("status", OPEN);
   else if (params.filters.status) q = q.eq("status", params.filters.status);
   if (params.filters.customer) q = q.eq("customer_id", params.filters.customer);
@@ -28,7 +28,7 @@ export default async function CustomerOrdersPage({ searchParams }: { searchParam
   const [{ data, count }, { customers }, { data: open }] = await Promise.all([
     q.order(params.sort, { ascending: params.dir === "asc", nullsFirst: false }).range(...range(params)),
     lookups(ctx.org.id, ["customers"]),
-    supabase.from("sales_orders").select("total, amount_paid, requested_date, status").eq("organization_id", ctx.org.id).in("status", [...OPEN, "dispatched", "delivered"]),
+    supabase.from("sales_orders").select("total, amount_paid, amount_credited, requested_date, status").eq("organization_id", ctx.org.id).in("status", [...OPEN, "dispatched", "delivered"]),
   ]);
   const openRows = (open ?? []).filter((o) => OPEN.includes(o.status));
   const cur = ctx.settings.currency;
@@ -51,7 +51,7 @@ export default async function CustomerOrdersPage({ searchParams }: { searchParam
         <Stat label="Open orders" value={String(openRows.length)} href="/commerce/customer-orders?status=open" />
         <Stat label="Open order value" value={formatMoney(openRows.reduce((s, o) => s + Number(o.total), 0), cur, { compact: true })} />
         <Stat label="Late" value={String(openRows.filter((o) => o.requested_date && o.requested_date < today).length)} tone={openRows.some((o) => o.requested_date && o.requested_date < today) ? "danger" : undefined} />
-        <Stat label="Unpaid balance" value={formatMoney((open ?? []).reduce((s, o) => s + Number(o.total) - Number(o.amount_paid), 0), cur, { compact: true })} hint="Confirmed, dispatched and delivered orders" />
+        <Stat label="Unpaid balance" value={formatMoney((open ?? []).reduce((s, o) => s + Number(o.total) - Number(o.amount_paid) - Number(o.amount_credited), 0), cur, { compact: true })} hint="Confirmed, dispatched and delivered orders" />
       </div>
       <Card>
         <ListToolbar
@@ -94,7 +94,7 @@ export default async function CustomerOrdersPage({ searchParams }: { searchParam
                     </TD>
                     <TD align="right">{formatMoney(o.total, o.currency)}</TD>
                     <TD>
-                      <PaymentBadge total={Number(o.total)} paid={Number(o.amount_paid)} status={o.status} />
+                      <PaymentBadge total={Number(o.total) - Number(o.amount_credited)} paid={Number(o.amount_paid)} status={o.status} />
                     </TD>
                     <TD>
                       <SalesStatusBadge status={o.status} />

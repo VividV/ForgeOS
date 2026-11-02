@@ -26,6 +26,8 @@ export default async function PrintPo({ params }: { params: Promise<{ id: string
         {draft && <p className="absolute right-8 top-8 rotate-6 rounded border-2 border-danger px-3 py-1 text-sm font-bold uppercase tracking-widest text-danger">Not approved</p>}
         <header className="flex items-start justify-between gap-6 border-b-2 border-ink pb-4">
           <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {ctx.org.logo_url && <img src={ctx.org.logo_url} alt="" className="mb-2 h-12 w-auto" />}
             <p className="text-lg font-bold">{ctx.org.name}</p>
             <p className="text-xs uppercase tracking-widest text-muted">Purchase order</p>
           </div>

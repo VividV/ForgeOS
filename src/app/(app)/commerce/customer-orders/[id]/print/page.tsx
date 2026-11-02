@@ -28,6 +28,8 @@ export default async function PrintCustomerOrder({ params }: { params: Promise<{
         {so.status === "cancelled" && <p className="absolute right-8 top-8 rotate-6 rounded border-2 border-danger px-3 py-1 text-sm font-bold uppercase tracking-widest text-danger">Cancelled</p>}
         <header className="flex items-start justify-between gap-6 border-b-2 border-ink pb-4">
           <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {ctx.org.logo_url && <img src={ctx.org.logo_url} alt="" className="mb-2 h-12 w-auto" />}
             <p className="text-lg font-bold">{org?.name ?? ctx.org.name}</p>
             {org?.address && <p className="whitespace-pre-line text-xs">{org.address}</p>}
             <p className="text-xs">{[org?.phone, org?.email, org?.website].filter(Boolean).join(" · ")}</p>

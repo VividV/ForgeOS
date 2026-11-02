@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/ui/misc";
 import { getSession, requirePermission } from "@/lib/auth";
 import { integrations } from "@/lib/server-env";
 import { Badge } from "@/components/ui/badge";
+import { UploadButton } from "@/components/files/upload";
 import { OrgSettingsForm, PrefsForm } from "./client";
 
 export const metadata = { title: "Organisation settings" };
@@ -28,6 +29,13 @@ export default async function SettingsPage() {
           </CardBody>
         </Card>
         <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader title="Logo" description="Shown on invoices, delivery notes and purchase orders. PNG or JPEG, up to 4 MB." action={manage && <UploadButton entityType="organization" entityId={ctx.org.id} asLogo label={org?.logo_url ? "Replace logo" : "Upload logo"} accept="image/png,image/jpeg,image/webp" />} />
+            <CardBody>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {org?.logo_url ? <img src={org.logo_url} alt="Company logo" className="h-16 w-auto" /> : <p className="text-[13px] text-muted">No logo yet.</p>}
+            </CardBody>
+          </Card>
           <Card>
             <CardHeader title="Operating preferences" />
             <CardBody>

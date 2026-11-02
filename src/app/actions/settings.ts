@@ -4,10 +4,10 @@ import { z } from "zod";
 import { actionContext } from "@/lib/auth";
 import { friendlyError, type ActionResult } from "@/lib/errors";
 import { parseOrFields } from "@/lib/validation/common";
-import { configSchema, orgSchema } from "@/lib/validation/onboarding";
+import { configSchema, orgSettingsSchema } from "@/lib/validation/onboarding";
 
 export async function saveOrgDetails(values: Record<string, unknown>): Promise<ActionResult> {
-  const p = parseOrFields(orgSchema, values);
+  const p = parseOrFields(orgSettingsSchema, values);
   if (!p.ok) return p.error;
   const c = await actionContext("settings.manage");
   if ("error" in c) return { ok: false, error: c.error! };

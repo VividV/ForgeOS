@@ -1,5 +1,6 @@
 import { Printer } from "lucide-react";
 import Link from "next/link";
+import { Attachments } from "@/components/files/attachments";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,9 @@ export default async function DispatchDetail({ params }: { params: Promise<{ id:
             />
           </CardBody>
         </Card>
+      </div>
+      <div className="mt-4">
+        <Attachments entityType="dispatch" entityId={d.id} canUpload={ctx.can("sales_orders.dispatch")} userId={ctx.user.id} canManage={ctx.can("settings.manage")} />
       </div>
     </>
   );

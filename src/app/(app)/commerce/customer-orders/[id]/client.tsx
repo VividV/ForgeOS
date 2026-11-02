@@ -1,7 +1,8 @@
 "use client";
-import { Ban, Check, CreditCard, Factory, RefreshCw, Undo2, X } from "lucide-react";
+import { Ban, Check, CreditCard, Factory, FileText, RefreshCw, Undo2, X } from "lucide-react";
 import { z } from "zod";
 import { allocateCustomerOrder, planProductionForLine, recordPayment, transitionCustomerOrder, voidPayment } from "@/app/actions/sales";
+import { issueCreditNote, issueInvoice, voidCreditNote } from "@/app/actions/ops";
 import { ActionButton } from "@/components/forms/action-button";
 import { FormDialog } from "@/components/forms/form-dialog";
 
@@ -94,6 +95,63 @@ export function VoidPayment({ id }: { id: string }) {
   return (
     <ActionButton size="sm" variant="ghost" action={(n) => voidPayment(id, n)} noteLabel="Reason" noteRequired confirm={{ title: "Void this payment?", description: "The payment stays on record, marked void, and the balance is updated." }} confirmLabel="Void payment">
       <Undo2 /> Void
+    </ActionButton>
+  );
+}
+
+export function InvoiceButton({ orderId, hasDispatched }: { orderId: string; hasDispatched: boolean }) {
+  return (
+    <FormDialog
+      triggerLabel="Invoice"
+      triggerIcon={<FileText />}
+      triggerSize="sm"
+      title="Issue tax invoice"
+      description="Invoices are numbered in sequence and can't be edited. Mistakes are corrected by voiding and re-issuing."
+      schema={z.object({ basis: z.string() })}
+      fields={[
+        {
+          name: "basis",
+          label: "Invoice for",
+          type: "select",
+          options: [
+            { value: "dispatched", label: "What has been dispatched (not yet invoiced)" },
+            { value: "ordered", label: "The whole order, in advance" },
+          ],
+        },
+        { name: "due_date", label: "Payment due", type: "date" },
+        { name: "notes", label: "Notes on the invoice", type: "textarea", span: 2 },
+      ]}
+      defaultValues={{ basis: hasDispatched ? "dispatched" : "ordered" }}
+      action={(v) => issueInvoice(orderId, v)}
+      submitLabel="Issue invoice"
+    />
+  );
+}
+
+export function CreditNoteButton({ orderId, max }: { orderId: string; max: number }) {
+  return (
+    <FormDialog
+      triggerLabel="Credit"
+      triggerIcon={<Undo2 />}
+      triggerSize="sm"
+      triggerVariant="ghost"
+      title="Issue credit note"
+      description={`Reduces what the customer owes (up to ${max.toLocaleString("en-NG", { minimumFractionDigits: 2 })}). For returned goods, use Record return instead and tick 'issue a credit note'.`}
+      schema={z.object({ amount: z.string().min(1, "Enter an amount"), reason: z.string().trim().min(2, "Give a reason") })}
+      fields={[
+        { name: "amount", label: "Amount", type: "number", required: true, min: "0", step: "any" },
+        { name: "reason", label: "Reason", required: true, placeholder: "e.g. Discount agreed for late delivery" },
+      ]}
+      action={(v) => issueCreditNote(orderId, v)}
+      submitLabel="Issue credit note"
+    />
+  );
+}
+
+export function VoidCreditNote({ id }: { id: string }) {
+  return (
+    <ActionButton size="icon-sm" variant="ghost" aria-label="Void credit note" action={(n) => voidCreditNote(id, n)} noteLabel="Reason" noteRequired confirm={{ title: "Void this credit note?" }} confirmLabel="Void">
+      <X />
     </ActionButton>
   );
 }

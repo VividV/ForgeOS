@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Attachments } from "@/components/files/attachments";
 import { notFound } from "next/navigation";
 import { InspectionDialog } from "@/components/quality/inspection-dialog";
 import { Badge, QcResultBadge } from "@/components/ui/badge";
@@ -122,6 +123,9 @@ export default async function GoodsReceiptPage({ params }: { params: Promise<{ i
             />
           </CardBody>
         </Card>
+      </div>
+      <div className="mt-4">
+        <Attachments entityType="goods_receipt" entityId={g.id} canUpload={ctx.can("procurement.create")} userId={ctx.user.id} canManage={ctx.can("settings.manage")} />
       </div>
     </>
   );

@@ -2,7 +2,7 @@
 import {
   Activity, ArrowLeftRight, BellRing, Boxes, CalendarCheck, ClipboardList, Cog, Factory, FileBarChart, Gauge, HardHat, Kanban,
   Layers, ListTree, Lock, Menu, PackageCheck, PanelLeftClose, PanelLeftOpen, Route, ScrollText, Settings, Shield, Shirt,
-  SlidersHorizontal, TriangleAlert, ShieldCheck, FilePlus, ShoppingCart, PackageOpen, Calculator, Receipt, Send, Contact, IdCard, Clock, Network, Truck, Users, Warehouse, X, type LucideIcon,
+  SlidersHorizontal, TriangleAlert, ShieldCheck, FilePlus, ShoppingCart, PackageOpen, Calculator, ClipboardCheck, FileText, Receipt, Send, Contact, IdCard, Clock, Network, Truck, Users, Warehouse, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,7 +17,7 @@ const ICONS: Record<string, LucideIcon> = {
   warehouse: Warehouse, "bell-ring": BellRing, shirt: Shirt, "list-tree": ListTree, truck: Truck, "file-bar-chart": FileBarChart,
   users: Users, shield: Shield, settings: Settings, "scroll-text": ScrollText, "shield-check": ShieldCheck, "file-plus": FilePlus,
   "shopping-cart": ShoppingCart, "package-open": PackageOpen, calculator: Calculator,
-  receipt: Receipt, send: Send, contact: Contact, "id-card": IdCard, clock: Clock, network: Network,
+  receipt: Receipt, send: Send, "clipboard-check": ClipboardCheck, "file-text": FileText, contact: Contact, "id-card": IdCard, clock: Clock, network: Network,
 };
 
 function isActive(path: string, href: string) {
